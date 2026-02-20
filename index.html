@@ -1186,9 +1186,6 @@
         <button class="btn btn-secondary" onclick="konfirmasiMenuBaru()">
           ➕ Input Menu Baru
         </button>
-        <button class="btn btn-secondary" onclick="cetakHasil()">
-          🖨️ Cetak / Export
-        </button>
       </div>
     </div>
   </div>
@@ -2110,6 +2107,9 @@ window.onload = () => {
     if (!localStorage.getItem('kedaiHeula_sheetsUrl')) {
       localStorage.setItem('kedaiHeula_sheetsUrl', DEFAULT_APPS_SCRIPT_URL);
     }
+
+    // Fix 4: Auto-pull dari cloud saat app dibuka (realtime sync antar device)
+    autoSyncOnLoad();
   } catch(e) {
     console.error('Init error:', e);
   }
@@ -2356,6 +2356,7 @@ function simpanMenu() {
 
   localStorage.setItem('kedaiHeula_menu', JSON.stringify(menuList));
   showToast(`✅ "${nama}" tersimpan!`);
+  autoSyncPush('menu'); // Auto push ke cloud
 
   setTimeout(() => {
     showKonfirmasi({
@@ -2522,6 +2523,7 @@ function hapusSemua() {
       localStorage.removeItem('kedaiHeula_menu');
       renderRingkasan();
       showToast('🗑️ Semua menu dihapus');
+      autoSyncPush('menu');
     }
   });
 }
@@ -2539,6 +2541,7 @@ function hapusItem(i) {
       localStorage.setItem('kedaiHeula_menu', JSON.stringify(menuList));
       renderRingkasan();
       showToast('🗑️ Menu dihapus');
+      autoSyncPush('menu');
     }
   });
 }
@@ -3037,6 +3040,7 @@ function simpanEdit() {
   tutupEdit();
   renderRingkasan();
   showToast(`✅ "${menuList[i].nama}" diperbarui!`);
+  autoSyncPush('menu');
 }
 
 function tutupEdit() {
@@ -3474,6 +3478,10 @@ function simpanTransaksiPOS() {
   updateCartSidebar();
   updatePOSSummary();
 
+  // Fix 3: Langsung update tab Laporan agar data masuk realtime
+  renderLaporan();
+  autoSyncPush('transaksi'); // Auto push transaksi ke cloud
+
   // Langsung tampilkan nota untuk print
   lihatNota(transaksi);
   showToast('✅ Transaksi berhasil!');
@@ -3637,29 +3645,55 @@ function savePromo(promo) {
   refreshPromoDropdown();
   renderPromoList();
   syncPromosToCloud();
+  autoSyncPush('promo');
   
-  // Clear form and hide
+  // Reset form simpan & simulasi ke default
   if (promo.type === 'diskon') {
     document.getElementById('diskon-nama-promo').value = '';
     document.getElementById('diskon-tgl-mulai').value = '';
     document.getElementById('diskon-tgl-selesai').value = '';
     document.getElementById('form-simpan-diskon').style.display = 'none';
+    // Reset simulasi diskon
+    document.getElementById('d-nama').value = '';
+    document.getElementById('d-hpp').value = '';
+    document.getElementById('d-harga-normal').value = '';
+    document.getElementById('d-diskon').value = '20';
+    document.getElementById('d-diskon-label').textContent = '20%';
+    document.getElementById('diskon-result').style.display = 'none';
+    document.getElementById('diskon-result').innerHTML = '';
+    const dMenuSel = document.getElementById('d-menu-select');
+    if (dMenuSel) dMenuSel.value = '';
   } else if (promo.type === 'bundling') {
     document.getElementById('bundling-nama-promo').value = '';
     document.getElementById('bundling-tgl-mulai').value = '';
     document.getElementById('bundling-tgl-selesai').value = '';
-    // Reset pilihan harga
+    // Reset pilihan harga bundling
     document.querySelectorAll('input[name="bundling-harga-promo"]').forEach(r => {
       r.checked = false;
-      r.closest('label').style.borderColor = 'var(--border)';
-      r.closest('label').style.background = 'var(--card)';
+      const lbl = r.closest('label');
+      if (lbl) { lbl.style.borderColor = 'var(--border)'; lbl.style.background = 'var(--card)'; }
     });
-    // form-simpan-bundling tetap visible
+    // Reset simulasi bundling
+    document.getElementById('bundling-result').innerHTML = '';
+    document.getElementById('bundling-result').style.display = 'none';
+    // Reset item bundling ke default
+    bundleCount = 0;
+    document.getElementById('bundle-items-list').innerHTML = '';
+    tambahBundleItem(); tambahBundleItem();
   } else if (promo.type === 'beli-gratis') {
     document.getElementById('beli-gratis-nama-promo').value = '';
     document.getElementById('beli-gratis-tgl-mulai').value = '';
     document.getElementById('beli-gratis-tgl-selesai').value = '';
-    // form-simpan-beli-gratis selalu visible, tidak perlu di-hide
+    // Reset simulasi beli gratis
+    document.getElementById('bg-beli').value = '2';
+    document.getElementById('bg-gratis').value = '1';
+    document.getElementById('bg-hpp').value = '';
+    document.getElementById('bg-harga').value = '';
+    document.getElementById('bg-channel').value = '';
+    document.getElementById('beli-gratis-result').style.display = 'none';
+    document.getElementById('beli-gratis-result').innerHTML = '';
+    const bgMenuSel = document.getElementById('bg-menu-select');
+    if (bgMenuSel) bgMenuSel.value = '';
   }
 }
 
@@ -3897,6 +3931,7 @@ function hapusPromo(promoId) {
       renderPromoList();
       refreshPromoDropdown();
       syncPromosToCloud();
+      autoSyncPush('promo');
     }
   });
 }
@@ -4935,6 +4970,112 @@ function hitungBeliGratis() {
   // Show form simpan promo
   const formBeliGratis = document.getElementById('form-simpan-beli-gratis');
   if (formBeliGratis) formBeliGratis.style.display = 'block';
+}
+
+// =====================
+// AUTO SYNC REALTIME
+// =====================
+
+// Debounce timer untuk auto-push
+let _autoSyncTimer = null;
+
+// Dipanggil saat app pertama kali dibuka - pull data terbaru dari cloud
+async function autoSyncOnLoad() {
+  const url = getSheetsUrl();
+  if (!url) return;
+
+  // Tampilkan indikator sync
+  const statusEl = document.getElementById('sync-status');
+  if (statusEl) { statusEl.textContent = '🔄 Menyinkronkan data...'; statusEl.style.color = 'var(--orange)'; }
+
+  try {
+    // Pull menu
+    const resMenu = await fetch(url + '?action=restore', { redirect: 'follow' });
+    if (resMenu.ok) {
+      const result = await resMenu.json();
+      if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
+        const lokal = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+        // Merge - cloud wins untuk item yang sama (by nama+tanggal)
+        const merged = [...result.data];
+        lokal.forEach(item => {
+          if (!merged.some(m => m.nama === item.nama && m.tanggal === item.tanggal)) {
+            merged.push(item);
+          }
+        });
+        localStorage.setItem('kedaiHeula_menu', JSON.stringify(merged));
+        menuList = merged;
+        renderRingkasan();
+      }
+    }
+
+    // Pull promo
+    const resPromo = await fetch(url + '?action=restore_promos', { redirect: 'follow' });
+    if (resPromo.ok) {
+      const result = await resPromo.json();
+      if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
+        const lokal = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+        const merged = [...result.data];
+        lokal.forEach(p => {
+          if (!merged.some(m => m.id == p.id)) merged.push(p);
+        });
+        localStorage.setItem('kedaiHeula_promos', JSON.stringify(merged));
+        renderPromoList();
+        refreshPromoDropdown();
+      }
+    }
+
+    const now = getWIBDateTimeString();
+    localStorage.setItem('kedaiHeula_lastSync', now);
+    updateSyncStatus();
+
+  } catch(e) {
+    // Silent fail - tidak ganggu user jika cloud tidak bisa diakses
+    console.warn('Auto sync failed:', e.message);
+    updateSyncStatus();
+  }
+}
+
+// Auto-push ke cloud setiap ada perubahan data (debounced 2 detik)
+function autoSyncPush(type = 'menu') {
+  clearTimeout(_autoSyncTimer);
+  _autoSyncTimer = setTimeout(() => {
+    const url = getSheetsUrl();
+    if (!url) return;
+
+    if (type === 'menu') {
+      const data = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'backup', data }),
+        redirect: 'follow'
+      }).then(r => r.json()).then(result => {
+        if (result.status === 'ok') {
+          const now = getWIBDateTimeString();
+          localStorage.setItem('kedaiHeula_lastSync', now);
+          updateSyncStatus();
+        }
+      }).catch(e => console.warn('Auto push menu failed:', e));
+
+    } else if (type === 'promo') {
+      syncPromosToCloud();
+
+    } else if (type === 'transaksi') {
+      // Kumpulkan semua transaksi POS
+      const allKeys = Object.keys(localStorage).filter(k => k.startsWith('kedaiHeula_pos_'));
+      let allTrx = [];
+      allKeys.forEach(k => {
+        try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {}
+      });
+      if (allTrx.length === 0) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'backup_transaksi_v2', data: allTrx }),
+        redirect: 'follow'
+      }).catch(e => console.warn('Auto push transaksi failed:', e));
+    }
+  }, 2000); // Tunggu 2 detik setelah perubahan terakhir
 }
 
 // =====================
