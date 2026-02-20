@@ -2098,6 +2098,21 @@ window.onload = () => {
   try {
     tambahBahan(); tambahBahan(); tambahBahan();
     tambahBiaya();
+
+    // Migrasi data lama: pastikan semua menu punya id unik
+    const existingMenu = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+    let needsMigration = false;
+    existingMenu.forEach(item => {
+      if (!item.id) {
+        item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+        needsMigration = true;
+      }
+    });
+    if (needsMigration) {
+      localStorage.setItem('kedaiHeula_menu', JSON.stringify(existingMenu));
+      menuList = existingMenu;
+    }
+
     renderRingkasan();
     tambahBundleItem();
     tambahBundleItem();
@@ -2338,21 +2353,32 @@ function simpanMenu() {
   const margin = selectedHargaJual > 0 ? selectedMargin : 50;
 
   const obj = {
+    id: null, // akan diisi di bawah
     nama, kategori,
     porsi: lastSnapshot.porsi,
     kemasan: lastSnapshot.kemasan,
     hpp, hargaJual, margin,
     channel: selectedChannel,
-    tanggal: getWIBDateTimeString(), // WIB timezone
+    tanggal: getWIBDateTimeString(),
     totalBatch: lastSnapshot.totalBatch,
     bahanRaw: lastSnapshot.bahanRaw || [],
     biayaRaw: lastSnapshot.biayaRaw || [],
-    foto: lastSnapshot.foto || null, // Simpan foto base64
+    foto: lastSnapshot.foto || null,
   };
 
-  const existing = menuList.findIndex(m => m.nama === nama);
-  if (existing >= 0) menuList[existing] = obj;
-  else menuList.push(obj);
+  // Cari existing berdasarkan id (jika ada) atau nama sebagai fallback
+  const existing = menuList.findIndex(m =>
+    (lastSnapshot.id && m.id === lastSnapshot.id) ||
+    (!lastSnapshot.id && m.nama === nama)
+  );
+
+  if (existing >= 0) {
+    obj.id = menuList[existing].id || ('menu_' + Date.now()); // Pertahankan id lama
+    menuList[existing] = obj;
+  } else {
+    obj.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    menuList.push(obj);
+  }
 
   localStorage.setItem('kedaiHeula_menu', JSON.stringify(menuList));
   showToast(`✅ "${nama}" tersimpan!`);
@@ -3028,12 +3054,13 @@ function simpanEdit() {
 
   menuList[i] = {
     ...m,
+    id: m.id || ('menu_' + Date.now() + '_' + Math.floor(Math.random() * 1000)), // Pertahankan id lama, buat baru jika belum ada
     nama: document.getElementById('edit-nama').value.trim() || m.nama,
     kategori: document.getElementById('edit-kategori').value,
     porsi, kemasan, bahanRaw, biayaRaw,
     totalBatch, hpp, hargaJual,
-    tanggal: getWIBDateTimeString(), // WIB timezone
-    foto: currentFotoBase64, // Update foto (bisa null jika dihapus)
+    tanggal: getWIBDateTimeString(),
+    foto: currentFotoBase64,
   };
 
   localStorage.setItem('kedaiHeula_menu', JSON.stringify(menuList));
@@ -4989,19 +5016,31 @@ async function autoSyncOnLoad() {
   if (statusEl) { statusEl.textContent = '🔄 Menyinkronkan data...'; statusEl.style.color = 'var(--orange)'; }
 
   try {
-    // Pull menu
+    // Pull menu - merge berdasarkan id (bukan nama+tanggal)
     const resMenu = await fetch(url + '?action=restore', { redirect: 'follow' });
     if (resMenu.ok) {
       const result = await resMenu.json();
       if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
         const lokal = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-        // Merge - cloud wins untuk item yang sama (by nama+tanggal)
-        const merged = [...result.data];
+
+        // Pastikan semua item lokal punya id
         lokal.forEach(item => {
-          if (!merged.some(m => m.nama === item.nama && m.tanggal === item.tanggal)) {
-            merged.push(item);
-          }
+          if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
         });
+
+        // Buat map dari cloud: id → item (cloud sebagai sumber kebenaran)
+        const cloudMap = {};
+        result.data.forEach(item => {
+          if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+          cloudMap[item.id] = item;
+        });
+
+        // Tambahkan item lokal yang tidak ada di cloud (belum tersync)
+        lokal.forEach(item => {
+          if (!cloudMap[item.id]) cloudMap[item.id] = item;
+        });
+
+        const merged = Object.values(cloudMap);
         localStorage.setItem('kedaiHeula_menu', JSON.stringify(merged));
         menuList = merged;
         renderRingkasan();
@@ -5281,23 +5320,24 @@ async function restoreFromSheets() {
         return;
       }
       
-      // Merge: gabungkan data cloud dengan lokal, hindari duplikat berdasarkan nama+tanggal
-      const merged = [...lokal];
-      let added = 0;
-      
+      // Merge berdasarkan id (bukan nama+tanggal)
+      const cloudMap = {};
       cloud.forEach(item => {
-        const exists = merged.some(m => m.nama === item.nama && m.tanggal === item.tanggal);
-        if (!exists) {
-          merged.push(item);
-          added++;
-        }
+        if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+        cloudMap[item.id] = item;
       });
+      lokal.forEach(item => {
+        if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+        if (!cloudMap[item.id]) cloudMap[item.id] = item;
+      });
+      const merged = Object.values(cloudMap);
+      const added = merged.length - cloud.length;
       
       localStorage.setItem('kedaiHeula_menu', JSON.stringify(merged));
       menuList = merged;
       renderRingkasan();
       
-      showToast(`✅ Restore berhasil! ${cloud.length} menu dari cloud, ${added} menu baru ditambahkan. Total: ${merged.length} menu.`);
+      showToast(`✅ Restore berhasil! ${cloud.length} menu dari cloud, ${added > 0 ? added + ' menu lokal ditambahkan. ' : ''}Total: ${merged.length} menu.`);
     } else {
       throw new Error(result.message || 'Data tidak valid dari server');
     }
