@@ -2,14 +2,9 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="description" content="Kedai Heula - Aplikasi manajemen bisnis kuliner: hitung HPP, kelola menu, kasir POS, dan strategi promo">
-<meta name="theme-color" content="#E03027">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Kedai Heula">
-<title>Kedai Heula – Manajemen Bisnis Kuliner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Kedai Heula - Aplikasi manajemen bisnis kuliner lengkap: hitung HPP, kelola menu, analisa penjualan, dan strategi promo">
+<title>Kedai Heula – Jajanan Mantap Pisani</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -1235,17 +1230,14 @@
       <div class="modal-body">
         <div class="info-box" style="background:#E3F2FD;border-left:4px solid #2196F3;padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:13px;">
           <span style="font-size:18px;">💡</span>
-          <div style="margin-left:10px;">Data kamu akan disimpan ke <strong>Google Sheets</strong> milikmu sendiri via Google Apps Script. Gratis, tidak ada pihak ketiga yang akses data kamu.</div>
+          <div style="margin-left:10px;">Data kamu tersimpan ke <strong>Google Sheets</strong> milikmu sendiri via Apps Script. URL sudah tersimpan — tinggal klik <strong>Simpan & Test</strong> untuk verifikasi koneksi.</div>
         </div>
 
-        <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--dark);">Langkah setup (sekali saja):</div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--dark);">Jika perlu ganti URL Apps Script:</div>
         <ol style="font-size:13px;color:#444;padding-left:18px;line-height:2;">
-          <li>Buka <a href="https://sheets.new" target="_blank" style="color:var(--red);font-weight:700;">sheets.new</a> untuk buat Google Sheet baru</li>
-          <li>Di Sheet, klik menu <strong>Extensions → Apps Script</strong></li>
-          <li>Hapus kode yang ada, paste kode dari file <code>apps-script.gs</code></li>
-          <li>Klik <strong>Deploy → New deployment → Web app</strong></li>
-          <li>Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong> → Deploy</li>
-          <li>Copy URL yang muncul, paste di bawah ini</li>
+          <li>Buka <a href="https://script.google.com" target="_blank" style="color:var(--red);font-weight:700;">script.google.com</a> → buka project Kedai Heula</li>
+          <li>Klik <strong>Deploy → Manage deployments</strong></li>
+          <li>Copy URL deployment yang aktif, paste di bawah</li>
         </ol>
 
         <div class="form-group" style="margin-top:14px;">
@@ -1605,6 +1597,9 @@
           </button>
           <button onclick="filterPromos('expired')" id="filter-expired" class="btn btn-secondary" style="padding:8px 16px;font-size:13px;white-space:nowrap;">
             ⏰ Expired
+          </button>
+          <button onclick="restorePromosFromCloud()" class="btn btn-secondary" style="padding:8px 16px;font-size:13px;white-space:nowrap;">
+            ⬇️ Restore Cloud
           </button>
         </div>
 
@@ -2109,11 +2104,17 @@ window.onload = () => {
     renderRingkasan();
     tambahBundleItem();
     tambahBundleItem();
+
+    // Auto pre-fill Apps Script URL jika belum tersimpan
+    const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdqBg7rvkD8ZdGRdAn-m-8-SG-b1j22zfZmGkjHUEjfN0RhNROT4KM5VkcA05e2T9t/exec';
+    if (!localStorage.getItem('kedaiHeula_sheetsUrl')) {
+      localStorage.setItem('kedaiHeula_sheetsUrl', DEFAULT_APPS_SCRIPT_URL);
+    }
   } catch(e) {
     console.error('Init error:', e);
   }
 
-  // Restore tampilan setelah print (mencegah font/layout berubah)
+  // Restore tampilan setelah print
   window.onafterprint = () => {
     document.getElementById('print-area').innerHTML = '';
   };
@@ -4974,7 +4975,11 @@ function updateSyncStatus() {
 
 function bukaSyncConfig() {
   const url = getSheetsUrl();
-  if (url) document.getElementById('sheets-url-input').value = url;
+  const input = document.getElementById('sheets-url-input');
+  // Pre-fill dengan URL yang tersimpan, atau URL default jika belum ada
+  if (url) {
+    input.value = url;
+  }
   
   // Clear debug log
   const debugEl = document.getElementById('debug-log');
@@ -4993,13 +4998,12 @@ function tutupSyncConfig() {
 async function simpanSyncConfig() {
   const url = document.getElementById('sheets-url-input').value.trim();
   if (!url || !url.startsWith('https://script.google.com')) {
-    alert('URL tidak valid. Pastikan URL dimulai dengan https://script.google.com');
+    showToast('⚠️ URL tidak valid');
     return;
   }
   localStorage.setItem('kedaiHeula_sheetsUrl', url);
   tutupSyncConfig();
   showToast('✅ URL tersimpan! Mencoba koneksi...');
-  // Test koneksi
   await syncKeSheets(true);
 }
 
@@ -5570,34 +5574,45 @@ function renderTabelTransaksi(transaksiList) {
 function syncTransaksiKeSheets() {
   const url = getSheetsUrl();
   if (!url) {
-    alert('Setup Google Sheets dulu di tab Ringkasan Menu → Setup Cloud Backup');
+    showToast('⚠️ Setup Google Sheets dulu di Ringkasan Menu → Setup Cloud');
+    bukaSyncConfig();
     return;
   }
 
-  const allTransaksi = JSON.parse(localStorage.getItem('kedaiHeula_transaksi') || '[]');
+  // Kumpulkan semua transaksi POS dari localStorage (format V2 multi-item)
+  const allKeys = Object.keys(localStorage).filter(k => k.startsWith('kedaiHeula_pos_'));
+  let allTransaksi = [];
+  allKeys.forEach(k => {
+    try {
+      const data = JSON.parse(localStorage.getItem(k) || '[]');
+      allTransaksi = allTransaksi.concat(data);
+    } catch(e) {}
+  });
+
   if (allTransaksi.length === 0) {
-    showToast('⚠️ Tidak ada transaksi untuk di-backup');
+    showToast('⚠️ Tidak ada transaksi POS untuk di-backup');
     return;
   }
 
   showKonfirmasi({
     icon: '☁️',
-    title: 'Backup Transaksi?',
+    title: 'Backup Transaksi POS?',
     message: `${allTransaksi.length} transaksi akan di-backup ke Google Sheets.`,
     labelOk: 'Ya, Backup',
     onOk: () => {
-      showToast('☁️ Menyimpan...');
+      showToast('☁️ Menyimpan transaksi...');
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'backup_transaksi', data: allTransaksi })
+        body: JSON.stringify({ action: 'backup_transaksi_v2', data: allTransaksi }),
+        redirect: 'follow'
       })
       .then(res => res.json())
       .then(result => {
         if (result.status === 'ok') {
           const now = getWIBDateTimeString();
           localStorage.setItem('kedaiHeula_lastSyncTransaksi', now);
-          showToast(`✅ Backup transaksi berhasil! ${allTransaksi.length} transaksi tersimpan.`);
+          showToast(`✅ ${result.count} transaksi baru berhasil disimpan ke Sheets!`);
         } else {
           throw new Error(result.message || 'Unknown error');
         }
@@ -5608,12 +5623,13 @@ function syncTransaksiKeSheets() {
       });
     }
   });
-} // end backupTransaksi
+}
 
 async function restoreTransaksiFromSheets() {
   const url = getSheetsUrl();
   if (!url) {
-    alert('Setup Google Sheets dulu di tab Ringkasan Menu → Setup Cloud Backup');
+    showToast('⚠️ Setup Google Sheets dulu');
+    bukaSyncConfig();
     return;
   }
 
@@ -5682,6 +5698,65 @@ async function restoreTransaksiFromSheets() {
 
   } // end onOk
   }); // end showKonfirmasi
+}
+
+// Sync promo ke Google Sheets
+function syncPromosToCloud() {
+  const url = getSheetsUrl();
+  if (!url) return; // silent fail jika belum setup
+
+  const promos = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'syncPromos', data: promos }),
+    redirect: 'follow'
+  }).catch(err => console.warn('Sync promo error:', err));
+}
+
+// Restore promo dari Google Sheets
+async function restorePromosFromCloud() {
+  const url = getSheetsUrl();
+  if (!url) {
+    showToast('⚠️ Setup Google Sheets dulu');
+    bukaSyncConfig();
+    return;
+  }
+
+  const lokal = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+
+  showKonfirmasi({
+    icon: '🏷️',
+    title: 'Restore Promo dari Cloud?',
+    message: lokal.length > 0
+      ? `Ada ${lokal.length} promo lokal. Data cloud akan digabung.`
+      : 'Data promo akan diisi dari cloud.',
+    labelOk: 'Ya, Restore',
+    onOk: async () => {
+      showToast('⏳ Memuat promo dari cloud...');
+      try {
+        const fetchUrl = url.includes('?') ? url + '&action=restore_promos' : url + '?action=restore_promos';
+        const res = await fetch(fetchUrl, { method: 'GET', redirect: 'follow' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json();
+        if (result.status === 'ok' && Array.isArray(result.data)) {
+          const merged = [...lokal];
+          let added = 0;
+          result.data.forEach(p => {
+            if (!merged.some(m => m.id == p.id)) { merged.push(p); added++; }
+          });
+          localStorage.setItem('kedaiHeula_promos', JSON.stringify(merged));
+          renderPromoList();
+          refreshPromoDropdown();
+          showToast(`✅ ${added} promo baru ditambahkan dari cloud!`);
+        } else {
+          throw new Error(result.message || 'Data tidak valid');
+        }
+      } catch(e) {
+        showToast('❌ Gagal restore promo: ' + e.message);
+      }
+    }
+  });
 }
 
 function exportLaporanPDF() {
