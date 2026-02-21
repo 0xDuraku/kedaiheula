@@ -5040,45 +5040,31 @@ function printNota() {
       <td style="text-align:right;padding:4px 0;font-weight:700;">${formatRp(item.subtotal)}</td>
     </tr>`).join('');
 
-  const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Nota Kedai Heula</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; padding: 8px; }
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .line { border-top: 1px dashed #000; margin: 6px 0; }
-    table { width: 100%; border-collapse: collapse; }
-    .total-row td { font-weight: bold; font-size: 14px; border-top: 1px solid #000; padding-top: 6px; margin-top: 4px; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-  <div class="center bold" style="font-size:16px;margin-bottom:4px;">KEDAI HEULA</div>
-  <div class="center" style="font-size:10px;margin-bottom:2px;">Jajanan Mantap Pisan!</div>
-  <div class="center" style="font-size:10px;">${tglDisplay}</div>
-  <div class="center" style="font-size:10px;margin-bottom:6px;">#${t.id}</div>
-  <div class="line"></div>
-  <table>
-    <tbody>${itemRows}</tbody>
-    <tr class="total-row">
-      <td colspan="3">TOTAL</td>
-      <td style="text-align:right;">${formatRp(t.total)}</td>
-    </tr>
-  </table>
-  <div class="line"></div>
-  <table>
-    <tr><td>Dibayar</td><td style="text-align:right;">${formatRp(t.bayar)}</td></tr>
-    <tr><td>Kembalian</td><td style="text-align:right;font-weight:bold;">${formatRp(t.kembalian)}</td></tr>
-  </table>
-  <div class="line"></div>
-  <div class="center" style="margin-top:8px;font-size:11px;">-- Terima kasih! --</div>
-  <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; }<\/script>
-</body>
-</html>`;
+  const htmlParts = [
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Nota Kedai Heula<\/title>',
+    '<style>* { box-sizing: border-box; margin: 0; padding: 0; }',
+    'body { font-family: \'Courier New\', monospace; font-size: 12px; width: 80mm; padding: 8px; }',
+    '.center { text-align: center; } .bold { font-weight: bold; }',
+    '.line { border-top: 1px dashed #000; margin: 6px 0; }',
+    'table { width: 100%; border-collapse: collapse; }',
+    '.total-row td { font-weight: bold; font-size: 14px; border-top: 1px solid #000; padding-top: 6px; }',
+    '@media print { body { margin: 0; } }',
+    '<\/style><\/head><body>',
+    '<div class="center bold" style="font-size:16px;margin-bottom:4px;">KEDAI HEULA<\/div>',
+    '<div class="center" style="font-size:10px;margin-bottom:2px;">Jajanan Mantap Pisan!<\/div>',
+    '<div class="center" style="font-size:10px;">' + tglDisplay + '<\/div>',
+    '<div class="center" style="font-size:10px;margin-bottom:6px;">#' + t.id + '<\/div>',
+    '<div class="line"><\/div>',
+    '<table><tbody>' + itemRows + '<\/tbody>',
+    '<tr class="total-row"><td colspan="3">TOTAL<\/td><td style="text-align:right;">' + formatRp(t.total) + '<\/td><\/tr>',
+    '<\/table><div class="line"><\/div>',
+    '<table>',
+    '<tr><td>Dibayar<\/td><td style="text-align:right;">' + formatRp(t.bayar) + '<\/td><\/tr>',
+    '<tr><td>Kembalian<\/td><td style="text-align:right;font-weight:bold;">' + formatRp(t.kembalian) + '<\/td><\/tr>',
+    '<\/table><div class="line"><\/div>',
+    '<div class="center" style="margin-top:8px;font-size:11px;">-- Terima kasih! --<\/div>'
+  ];
+  const htmlContent = htmlParts.join('') + '<scr' + 'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};}<\/scr' + 'ipt><\/body><\/html>';
 
   // Buka di popup window terpisah agar layout utama tidak terpengaruh
   const popup = window.open('', 'nota_print', 'width=350,height=600,menubar=no,toolbar=no,status=no');
@@ -5668,7 +5654,7 @@ async function autoSyncOnLoad() {
         renderRingkasan();
         // Push hasil merged kembali ke cloud agar bersih
         if (merged.length !== result.data.length) {
-          fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: merged }), redirect: 'follow' }).catch(() => {});
+          fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: merged })), redirect: 'follow' }).catch(() => {});
         }
       }
     }
@@ -5746,9 +5732,9 @@ async function syncManual() {
     allKeys.forEach(k => { try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {} });
 
     await Promise.allSettled([
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: finalMenu }), redirect: 'follow' }),
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'syncPromos', data: finalPromo }), redirect: 'follow' }),
-      allTrx.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup_transaksi_v2', data: allTrx }), redirect: 'follow' }),
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: finalMenu })), redirect: 'follow' }),
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'syncPromos', data: finalPromo })), redirect: 'follow' }),
+      allTrx.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup_transaksi_v2', data: allTrx })), redirect: 'follow' }),
     ]);
 
     // STEP 6: Update UI
@@ -6835,7 +6821,7 @@ function exportLaporanPDF() {
       .total-row td { background: #FFF3E0 !important; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
       .doc-footer { margin-top: 16px; padding-top: 8px; border-top: 2px solid #F0E0CC; display: flex; justify-content: space-between; font-size: 9px; color: #aaa; }
-    </style>
+    <\/style>
 
     <div class="doc-header">
       <div>
