@@ -926,11 +926,95 @@
     #print-area .hb-value { font-size: 17px; font-weight: 900; display: block; margin-bottom: 2px; }
     #print-area .hb-margin { font-size: 10px; color: #888; display: block; }
 
-    #print-area .doc-footer { margin-top: 24px; padding-top: 10px; border-top: 2px solid #F0E0CC; display: flex; justify-content: space-between; font-size: 10px; color: #aaa; }
+    /* ── LOGIN SCREEN ─────────────────────────────────────────── */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, var(--red) 0%, var(--orange) 60%, var(--yellow) 100%);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
   }
-</style>
+  #login-screen.hidden { display: none; }
+  .login-box {
+    background: var(--card); border-radius: 24px; padding: 36px 28px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo .emoji { font-size: 56px; display: block; margin-bottom: 8px; }
+  .login-logo h1 { font-family: 'Fredoka One', cursive; font-size: 28px; color: var(--red); }
+  .login-logo p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .login-field { margin-bottom: 16px; }
+  .login-field label { display: block; font-size: 13px; font-weight: 800; margin-bottom: 6px; color: var(--dark); }
+  .login-field input {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 2px solid var(--border); font-size: 15px; font-family: 'Nunito', sans-serif;
+    outline: none; transition: border-color 0.2s;
+  }
+  .login-field input:focus { border-color: var(--orange); }
+  .login-btn {
+    width: 100%; padding: 14px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    color: white; font-size: 16px; font-weight: 800; font-family: 'Nunito', sans-serif;
+    cursor: pointer; margin-top: 8px; transition: opacity 0.2s;
+  }
+  .login-btn:hover { opacity: 0.9; }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-error {
+    background: #FFF0EF; border: 2px solid var(--red); border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; color: var(--red); font-weight: 700;
+    margin-top: 12px; display: none;
+  }
+  /* User badge di header */
+  #user-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.2); border-radius: 20px; padding: 6px 14px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  #user-badge:hover { background: rgba(255,255,255,0.3); }
+  #user-badge .ub-name { color: white; font-size: 13px; font-weight: 800; }
+  #user-badge .ub-role { color: rgba(255,255,255,0.8); font-size: 11px; }
+  /* Tab kasir-only mode */
+  .tab-admin-only { display: none; }
+  body.role-admin .tab-admin-only { display: flex; }
+  /* Modal kelola akun */
+  .akun-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-radius: 12px; background: var(--bg);
+    border: 2px solid var(--border); margin-bottom: 8px;
+  }
+  .akun-row .ar-info { flex: 1; }
+  .akun-row .ar-id { font-weight: 800; font-size: 14px; }
+  .akun-row .ar-role { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .role-badge {
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 800;
+  }
+  .role-badge.admin { background: #FFF0EF; color: var(--red); }
+  .role-badge.kasir { background: #E8F5E9; color: var(--green); }
+
 </head>
 <body>
+
+<!-- ── LOGIN SCREEN ──────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="emoji">🍱</span>
+      <h1>Kedai Heula</h1>
+      <p>Masuk untuk mulai kelola bisnis</p>
+    </div>
+    <div class="login-field">
+      <label>ID Pengguna</label>
+      <input type="text" id="login-id" placeholder="Masukkan ID..." autocomplete="username"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()" />
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Masukkan password..."
+        onkeydown="if(event.key==='Enter')doLoginClick()" />
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLoginClick()">🔓 Masuk</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
 
 <header>
   <div style="display:flex;align-items:center;gap:12px;">
@@ -940,34 +1024,46 @@
       <div class="logo-sub">Manajemen Bisnis Kuliner – Jajanan Mantap Pisan!</div>
     </div>
   </div>
-  <div class="badge">BETA</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div id="user-badge" onclick="bukaMenuUser()">
+      <div>
+        <div class="ub-name" id="ub-name">—</div>
+        <div class="ub-role" id="ub-role">—</div>
+      </div>
+      <span style="color:white;font-size:18px;">▾</span>
+    </div>
+  </div>
 </header>
 
 <div class="tabs-wrapper">
   <div class="tab-grid">
-    <button class="tab-icon active" onclick="switchTab('hitung')">
+    <button class="tab-icon tab-admin-only" onclick="switchTab('hitung')">
       <div class="ti-icon">🧮</div>
       <div class="ti-label">Hitung HPP</div>
     </button>
-    <button class="tab-icon" onclick="switchTab('ringkasan')">
+    <button class="tab-icon tab-admin-only" onclick="switchTab('ringkasan')">
       <div class="ti-icon">📋</div>
       <div class="ti-label">Ringkasan Menu</div>
     </button>
-    <button class="tab-icon" onclick="switchTab('laporan')">
+    <button class="tab-icon tab-admin-only" onclick="switchTab('laporan')">
       <div class="ti-icon">📊</div>
       <div class="ti-label">Laporan</div>
     </button>
-    <button class="tab-icon" onclick="switchTab('promo')">
+    <button class="tab-icon tab-admin-only" onclick="switchTab('promo')">
       <div class="ti-icon">🏷️</div>
       <div class="ti-label">Promo</div>
     </button>
-    <button class="tab-icon" onclick="switchTab('pos')">
+    <button class="tab-icon" id="tab-btn-pos" onclick="switchTab('pos')">
       <div class="ti-icon">💰</div>
       <div class="ti-label">Kasir (POS)</div>
     </button>
-    <button class="tab-icon" onclick="switchTab('panduan')">
+    <button class="tab-icon tab-admin-only" onclick="switchTab('panduan')">
       <div class="ti-icon">📖</div>
       <div class="ti-label">Panduan</div>
+    </button>
+    <button class="tab-icon tab-admin-only" onclick="switchTab('akun')">
+      <div class="ti-icon">👥</div>
+      <div class="ti-label">Kelola Akun</div>
     </button>
   </div>
 </div>
@@ -1959,6 +2055,106 @@
   </div>
 </div>
 
+<!-- TAB KELOLA AKUN (admin only) -->
+<div id="tab-akun" class="tab-content">
+  <div class="section-title">👥 Kelola Akun</div>
+  <div class="section-sub">Tambah, hapus, dan kelola akun kasir</div>
+
+  <!-- Info akun saya -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:12px;">🙋 Akun Saya</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:800;" id="akun-saya-nama">—</div>
+        <div style="font-size:12px;color:var(--muted);">ID: <span id="akun-saya-id">—</span></div>
+      </div>
+      <button class="btn btn-secondary" style="font-size:13px;" onclick="bukaGantiPassword()">🔑 Ganti Password</button>
+    </div>
+  </div>
+
+  <!-- Tambah akun baru -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:14px;">➕ Tambah Akun Kasir</div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group">
+        <label>ID Pengguna <span style="color:var(--muted);font-weight:400;">(unik, tidak bisa diubah)</span></label>
+        <input type="text" id="new-user-id" placeholder="cth: kasir01" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);font-size:14px;" />
+      </div>
+      <div class="form-group">
+        <label>Nama Tampilan</label>
+        <input type="text" id="new-user-nama" placeholder="cth: Siti" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);font-size:14px;" />
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="new-user-pass" placeholder="Min. 6 karakter" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);font-size:14px;" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="new-user-role" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);font-size:14px;background:var(--card);">
+          <option value="kasir">💰 Kasir (POS saja)</option>
+          <option value="admin">⚙️ Admin (akses penuh)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="tambahAkun()" style="font-size:14px;padding:10px 20px;">➕ Tambah Akun</button>
+  </div>
+
+  <!-- Daftar akun -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="card-title">📋 Daftar Akun</div>
+      <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="muatDaftarAkun()">🔄 Refresh</button>
+    </div>
+    <div id="daftar-akun-list">
+      <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Memuat...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ganti Password -->
+<div class="modal-overlay" id="modal-ganti-pass" onclick="if(event.target===this)tutupGantiPassword()">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Ganti Password</div>
+      <button class="modal-close" onclick="tutupGantiPassword()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Password Lama</label>
+        <input type="password" id="ganti-pass-lama" placeholder="Password saat ini" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);font-size:14px;" />
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Password Baru</label>
+        <input type="password" id="ganti-pass-baru" placeholder="Min. 6 karakter" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);font-size:14px;" />
+      </div>
+      <div class="form-group">
+        <label>Konfirmasi Password Baru</label>
+        <input type="password" id="ganti-pass-konfirm" placeholder="Ulangi password baru" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);font-size:14px;" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="tutupGantiPassword()">Batal</button>
+      <button class="btn btn-primary" onclick="simpanGantiPassword()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal User Menu (logout dll) -->
+<div class="modal-overlay" id="modal-user-menu" onclick="if(event.target===this)tutupMenuUser()">
+  <div class="modal-box" style="max-width:320px;">
+    <div class="modal-header">
+      <div class="modal-title" id="user-menu-title">Akun</div>
+      <button class="modal-close" onclick="tutupMenuUser()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-secondary" style="width:100%;text-align:left;" onclick="tutupMenuUser();bukaGantiPassword()">🔑 Ganti Password</button>
+      <button class="btn btn-secondary" style="width:100%;text-align:left;color:var(--red);border-color:var(--red);" onclick="doLogoutClick()">🚪 Keluar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDIT MENU -->
 <div class="modal-overlay" id="modal-edit" onclick="if(event.target===this)tutupEdit()">
   <div class="modal-box">
@@ -2081,6 +2277,393 @@
 
 <script>
 // =====================
+// AUTH STATE
+// =====================
+let _authUser = null; // { userId, username, role, token }
+let _sessionCheckTimer = null;
+
+function getAuthHeaders() {
+  if (!_authUser) return {};
+  return { userId: _authUser.userId, token: _authUser.token };
+}
+
+function authFetchUrl(url) {
+  if (!_authUser) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}userId=${encodeURIComponent(_authUser.userId)}&token=${encodeURIComponent(_authUser.token)}`;
+}
+
+function authPostBody(body) {
+  if (!_authUser) return body;
+  return { ...body, userId: _authUser.userId, token: _authUser.token };
+}
+
+// ── Login ──────────────────────────────────────────────────────────────────
+async function doLoginClick() {
+  const userId   = document.getElementById('login-id').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const btn      = document.getElementById('login-btn');
+  const errEl    = document.getElementById('login-error');
+
+  if (!userId || !password) { showLoginError('ID dan password tidak boleh kosong'); return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Masuk...';
+  errEl.style.display = 'none';
+
+  try {
+    const url = getSheetsUrl();
+    if (!url) { showLoginError('URL Apps Script belum dikonfigurasi'); btn.disabled = false; btn.textContent = '🔓 Masuk'; return; }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'login', userId, password }),
+      redirect: 'follow'
+    });
+    const result = await res.json();
+
+    if (result.status === 'ok') {
+      _authUser = { userId: result.userId, username: result.username, role: result.role, token: result.token };
+      localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
+      onLoginSuccess();
+    } else {
+      showLoginError(result.message || 'Login gagal');
+    }
+  } catch(e) {
+    showLoginError('Gagal terhubung ke server: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔓 Masuk';
+  }
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+}
+
+function onLoginSuccess() {
+  // Sembunyikan login screen, tampilkan app
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('login-pass').value = '';
+
+  // Set role di body untuk CSS
+  document.body.classList.remove('role-admin', 'role-kasir');
+  document.body.classList.add('role-' + _authUser.role);
+
+  // Update user badge
+  document.getElementById('ub-name').textContent = _authUser.username;
+  document.getElementById('ub-role').textContent = _authUser.role === 'admin' ? '⚙️ Admin' : '💰 Kasir';
+
+  // Update halaman akun saya
+  document.getElementById('akun-saya-nama').textContent = _authUser.username;
+  document.getElementById('akun-saya-id').textContent = _authUser.userId;
+
+  // Aktifkan tab yang sesuai
+  if (_authUser.role === 'kasir') {
+    // Kasir langsung ke POS
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-pos').classList.add('active');
+    document.getElementById('tab-btn-pos').classList.add('active');
+    renderPOSGrid(); renderPOSBundling(); updatePOSSummary(); refreshPromoDropdown();
+    pullTrxFromCloud();
+  } else {
+    // Admin ke hitung HPP
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-hitung').classList.add('active');
+    const firstAdminTab = document.querySelector('.tab-admin-only');
+    if (firstAdminTab) firstAdminTab.classList.add('active');
+    autoSyncOnLoad();
+  }
+
+  // Mulai session check setiap 30 detik
+  startSessionCheck();
+}
+
+// ── Session Check (deteksi kick) ───────────────────────────────────────────
+let _kickCountdownTimer = null;
+let _kickCountdownSeconds = 30;
+
+function startSessionCheck() {
+  clearInterval(_sessionCheckTimer);
+  _sessionCheckTimer = setInterval(async () => {
+    if (!_authUser) return;
+    try {
+      const url = getSheetsUrl();
+      if (!url) return;
+      const res = await fetch(authFetchUrl(url + '?action=ping'), { redirect: 'follow' });
+      const result = await res.json();
+      if (result.status === 'unauthorized') {
+        clearInterval(_sessionCheckTimer);
+        startKickCountdown();
+      }
+    } catch(e) {} // silent fail jika offline
+  }, 30000);
+}
+
+function startKickCountdown() {
+  if (_kickCountdownTimer) return; // sudah berjalan
+
+  _kickCountdownSeconds = 30;
+  showKickBanner(_kickCountdownSeconds);
+
+  _kickCountdownTimer = setInterval(() => {
+    _kickCountdownSeconds--;
+    updateKickBanner(_kickCountdownSeconds);
+    if (_kickCountdownSeconds <= 0) {
+      clearInterval(_kickCountdownTimer);
+      _kickCountdownTimer = null;
+      tutupKickBanner();
+      forceLogout('Sesi berakhir — akun ini sudah login di perangkat lain.');
+    }
+  }, 1000);
+}
+
+function showKickBanner(secs) {
+  let el = document.getElementById('kick-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'kick-banner';
+    el.style.cssText = `
+      position:fixed;bottom:0;left:0;right:0;z-index:99999;
+      background:linear-gradient(135deg,#E03027,#F47C20);
+      color:white;padding:16px 20px;
+      display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+      box-shadow:0 -4px 20px rgba(224,48,39,0.4);
+      font-family:'Nunito',sans-serif;
+    `;
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <div style="flex:1;min-width:200px;">
+      <div style="font-size:15px;font-weight:800;">⚠️ Perangkat Lain Login</div>
+      <div style="font-size:13px;opacity:0.9;">Akun ini baru saja login di perangkat lain. Sesi ini akan berakhir dalam <strong id="kick-countdown">${secs}</strong> detik.</div>
+    </div>
+    <button onclick="tetapDisini()" style="
+      background:white;color:var(--red);border:none;border-radius:10px;
+      padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;
+      font-family:'Nunito',sans-serif;white-space:nowrap;
+    ">✋ Tetap di Sini</button>
+    <button onclick="logoutSekarang()" style="
+      background:rgba(0,0,0,0.2);color:white;border:2px solid rgba(255,255,255,0.4);
+      border-radius:10px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;
+      font-family:'Nunito',sans-serif;white-space:nowrap;
+    ">🚪 Logout Sekarang</button>
+  `;
+}
+
+function updateKickBanner(secs) {
+  const el = document.getElementById('kick-countdown');
+  if (el) el.textContent = secs;
+}
+
+function tutupKickBanner() {
+  const el = document.getElementById('kick-banner');
+  if (el) el.remove();
+}
+
+// User klik "Tetap di Sini" — login ulang di background untuk rebut session
+async function tetapDisini() {
+  clearInterval(_kickCountdownTimer);
+  _kickCountdownTimer = null;
+  tutupKickBanner();
+
+  // Re-login dengan token yang tersimpan tidak bisa, harus minta password
+  // Tampilkan dialog konfirmasi password
+  showKonfirmasi({
+    icon: '🔑',
+    title: 'Konfirmasi Password',
+    message: 'Masukkan password untuk tetap aktif di perangkat ini. Perangkat lain akan dikeluarkan.',
+    labelOk: 'Tetap di Sini',
+    onOk: async () => {
+      // Ambil password via prompt sederhana — minta re-login
+      const pass = prompt('Masukkan password kamu:');
+      if (!pass) return;
+      try {
+        const url = getSheetsUrl();
+        const res = await fetch(url, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'login', userId: _authUser.userId, password: pass }),
+          redirect: 'follow'
+        });
+        const result = await res.json();
+        if (result.status === 'ok') {
+          _authUser = { ..._authUser, token: result.token };
+          localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
+          showToast('✅ Sesi dipulihkan — perangkat lain telah dikeluarkan');
+          startSessionCheck();
+        } else {
+          showToast('❌ Password salah');
+        }
+      } catch(e) { showToast('❌ Gagal: ' + e.message); }
+    }
+  });
+}
+
+function logoutSekarang() {
+  clearInterval(_kickCountdownTimer);
+  _kickCountdownTimer = null;
+  tutupKickBanner();
+  doLogoutClick();
+}
+
+function forceLogout(msg) {
+  clearInterval(_kickCountdownTimer);
+  _kickCountdownTimer = null;
+  tutupKickBanner();
+  _authUser = null;
+  localStorage.removeItem('kedaiHeula_auth');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.body.classList.remove('role-admin', 'role-kasir');
+  showLoginError(msg || 'Sesi berakhir, silakan login kembali.');
+}
+
+// ── Logout ─────────────────────────────────────────────────────────────────
+async function doLogoutClick() {
+  tutupMenuUser();
+  if (!_authUser) return;
+  try {
+    const url = getSheetsUrl();
+    if (url) {
+      await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'logout', userId: _authUser.userId, token: _authUser.token }),
+        redirect: 'follow'
+      });
+    }
+  } catch(e) {}
+  clearInterval(_sessionCheckTimer);
+  _authUser = null;
+  localStorage.removeItem('kedaiHeula_auth');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.body.classList.remove('role-admin', 'role-kasir');
+  document.getElementById('login-id').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  showToast('✅ Berhasil keluar');
+}
+
+function bukaMenuUser() {
+  if (!_authUser) return;
+  document.getElementById('user-menu-title').textContent = _authUser.username + ' (' + _authUser.role + ')';
+  document.getElementById('modal-user-menu').style.display = 'flex';
+}
+function tutupMenuUser() { document.getElementById('modal-user-menu').style.display = 'none'; }
+
+// ── Kelola Akun ────────────────────────────────────────────────────────────
+async function muatDaftarAkun() {
+  const url = getSheetsUrl();
+  if (!url || !_authUser) return;
+  const container = document.getElementById('daftar-akun-list');
+  container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">⏳ Memuat...</div>';
+  try {
+    const res = await fetch(authFetchUrl(url + '?action=getUsers'), { redirect: 'follow' });
+    const result = await res.json();
+    if (result.status === 'ok' && Array.isArray(result.data)) {
+      if (result.data.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Belum ada akun</div>';
+        return;
+      }
+      container.innerHTML = result.data.map(u => `
+        <div class="akun-row">
+          <div class="ar-info">
+            <div class="ar-id">${u.username} <span class="role-badge ${u.role}">${u.role}</span></div>
+            <div class="ar-role">ID: ${u.userId} · Dibuat: ${u.createdAt ? u.createdAt.split('T')[0] : '—'}</div>
+          </div>
+          ${u.userId !== 'admin' ? `<button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;color:var(--red);border-color:var(--red);" onclick="hapusAkun('${u.userId}','${u.username}')">🗑️ Hapus</button>` : '<span style="font-size:11px;color:var(--muted);">Admin utama</span>'}
+        </div>
+      `).join('');
+    } else if (result.status === 'unauthorized') {
+      forceLogout(); 
+    }
+  } catch(e) { container.innerHTML = '<div style="color:var(--red);padding:10px;font-size:13px;">❌ Gagal memuat: ' + e.message + '</div>'; }
+}
+
+async function tambahAkun() {
+  const userId   = document.getElementById('new-user-id').value.trim();
+  const username = document.getElementById('new-user-nama').value.trim();
+  const password = document.getElementById('new-user-pass').value;
+  const role     = document.getElementById('new-user-role').value;
+
+  if (!userId || !username || !password) { showToast('⚠️ Lengkapi semua field'); return; }
+  if (password.length < 6) { showToast('⚠️ Password minimal 6 karakter'); return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(userId)) { showToast('⚠️ ID hanya boleh huruf, angka, dan underscore'); return; }
+
+  const url = getSheetsUrl();
+  try {
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(authPostBody({ action: 'createUser', newUserId: userId, username, password, role })),
+      redirect: 'follow'
+    });
+    const result = await res.json();
+    if (result.status === 'ok') {
+      showToast('✅ Akun berhasil dibuat!');
+      document.getElementById('new-user-id').value = '';
+      document.getElementById('new-user-nama').value = '';
+      document.getElementById('new-user-pass').value = '';
+      muatDaftarAkun();
+    } else if (result.status === 'unauthorized') {
+      forceLogout();
+    } else {
+      showToast('❌ ' + (result.message || 'Gagal membuat akun'));
+    }
+  } catch(e) { showToast('❌ Error: ' + e.message); }
+}
+
+async function hapusAkun(userId, username) {
+  showKonfirmasi({
+    icon: '🗑️', title: 'Hapus Akun?',
+    message: `Akun "${username}" (ID: ${userId}) akan dihapus permanen dan langsung logout dari semua device.`,
+    labelOk: 'Ya, Hapus',
+    onOk: async () => {
+      const url = getSheetsUrl();
+      try {
+        const res = await fetch(url, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(authPostBody({ action: 'deleteUser', targetUserId: userId })),
+          redirect: 'follow'
+        });
+        const result = await res.json();
+        if (result.status === 'ok') { showToast('✅ Akun dihapus'); muatDaftarAkun(); }
+        else showToast('❌ ' + (result.message || 'Gagal'));
+      } catch(e) { showToast('❌ Error: ' + e.message); }
+    }
+  });
+}
+
+function bukaGantiPassword() {
+  document.getElementById('ganti-pass-lama').value = '';
+  document.getElementById('ganti-pass-baru').value = '';
+  document.getElementById('ganti-pass-konfirm').value = '';
+  document.getElementById('modal-ganti-pass').style.display = 'flex';
+}
+function tutupGantiPassword() { document.getElementById('modal-ganti-pass').style.display = 'none'; }
+
+async function simpanGantiPassword() {
+  const lama    = document.getElementById('ganti-pass-lama').value;
+  const baru    = document.getElementById('ganti-pass-baru').value;
+  const konfirm = document.getElementById('ganti-pass-konfirm').value;
+  if (!lama || !baru) { showToast('⚠️ Isi semua field'); return; }
+  if (baru.length < 6) { showToast('⚠️ Password baru minimal 6 karakter'); return; }
+  if (baru !== konfirm) { showToast('⚠️ Konfirmasi password tidak cocok'); return; }
+
+  const url = getSheetsUrl();
+  try {
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(authPostBody({ action: 'changePassword', oldPassword: lama, newPassword: baru })),
+      redirect: 'follow'
+    });
+    const result = await res.json();
+    if (result.status === 'ok') { tutupGantiPassword(); showToast('✅ Password berhasil diubah!'); }
+    else showToast('❌ ' + (result.message || 'Gagal'));
+  } catch(e) { showToast('❌ Error: ' + e.message); }
+}
+
+// =====================
 // STATE
 // =====================
 let bahanCount = 0;
@@ -2117,19 +2700,28 @@ window.onload = () => {
     tambahBundleItem();
     tambahBundleItem();
 
-    // Auto pre-fill Apps Script URL jika belum tersimpan
+    // Set URL default
     const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdqBg7rvkD8ZdGRdAn-m-8-SG-b1j22zfZmGkjHUEjfN0RhNROT4KM5VkcA05e2T9t/exec';
     if (!localStorage.getItem('kedaiHeula_sheetsUrl')) {
       localStorage.setItem('kedaiHeula_sheetsUrl', DEFAULT_APPS_SCRIPT_URL);
     }
 
-    // Fix 4: Auto-pull dari cloud saat app dibuka (realtime sync antar device)
-    autoSyncOnLoad();
+    // Cek saved session
+    const savedAuth = localStorage.getItem('kedaiHeula_auth');
+    if (savedAuth) {
+      try {
+        _authUser = JSON.parse(savedAuth);
+        onLoginSuccess(); // Langsung masuk tanpa login ulang
+      } catch(e) {
+        localStorage.removeItem('kedaiHeula_auth');
+        // Tampilkan login screen
+      }
+    }
+    // Kalau tidak ada saved session, login screen sudah visible by default
   } catch(e) {
     console.error('Init error:', e);
   }
 
-  // Restore tampilan setelah print
   window.onafterprint = () => {
     document.getElementById('print-area').innerHTML = '';
   };
@@ -2156,7 +2748,11 @@ function switchTab(id) {
     pullPromosFromCloud();
   }
 
-  // Fix 2: Pull transaksi POS terbaru dari cloud saat buka tab POS
+  if (id === 'akun') {
+    document.getElementById('akun-saya-nama').textContent = _authUser ? _authUser.username : '—';
+    document.getElementById('akun-saya-id').textContent = _authUser ? _authUser.userId : '—';
+    muatDaftarAkun();
+  }
   if (id === 'pos') {
     renderPOSGrid();
     renderPOSBundling();
@@ -5060,7 +5656,7 @@ async function autoSyncOnLoad() {
 
   try {
     // 1. Pull menu dari cloud
-    const resMenu = await fetch(url + '?action=restore', { redirect: 'follow' });
+    const resMenu = await fetch(authFetchUrl(url + '?action=restore'), { redirect: 'follow' });
     if (resMenu.ok) {
       const result = await resMenu.json();
       if (result.status === 'ok' && Array.isArray(result.data)) {
@@ -5072,13 +5668,13 @@ async function autoSyncOnLoad() {
         renderRingkasan();
         // Push hasil merged kembali ke cloud agar bersih
         if (merged.length !== result.data.length) {
-          fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup', data: merged }), redirect: 'follow' }).catch(() => {});
+          fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: merged }), redirect: 'follow' }).catch(() => {});
         }
       }
     }
 
     // 2. Pull promo dari cloud
-    const resPromo = await fetch(url + '?action=restore_promos', { redirect: 'follow' });
+    const resPromo = await fetch(authFetchUrl(url + '?action=restore_promos'), { redirect: 'follow' });
     if (resPromo.ok) {
       const result = await resPromo.json();
       if (result.status === 'ok' && Array.isArray(result.data)) {
@@ -5114,8 +5710,8 @@ async function syncManual() {
   try {
     // STEP 1: Pull dari cloud dulu
     const [resMenu, resPromo] = await Promise.all([
-      fetch(url + '?action=restore', { redirect: 'follow' }),
-      fetch(url + '?action=restore_promos', { redirect: 'follow' }),
+      fetch(authFetchUrl(url + '?action=restore'), { redirect: 'follow' }),
+      fetch(authFetchUrl(url + '?action=restore_promos'), { redirect: 'follow' }),
     ]);
 
     // STEP 2: Merge menu — timestamp terbaru menang, deduplikasi
@@ -5150,9 +5746,9 @@ async function syncManual() {
     allKeys.forEach(k => { try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {} });
 
     await Promise.allSettled([
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup', data: finalMenu }), redirect: 'follow' }),
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'syncPromos', data: finalPromo }), redirect: 'follow' }),
-      allTrx.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup_transaksi_v2', data: allTrx }), redirect: 'follow' }),
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: finalMenu }), redirect: 'follow' }),
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'syncPromos', data: finalPromo }), redirect: 'follow' }),
+      allTrx.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup_transaksi_v2', data: allTrx }), redirect: 'follow' }),
     ]);
 
     // STEP 6: Update UI
@@ -5197,7 +5793,7 @@ async function bersihkanDuplikat() {
           await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ action: 'backup', data: bersih }),
+            body: JSON.stringify(authPostBody({ action: 'backup', data: bersih })),
             redirect: 'follow'
           });
           const now = getWIBDateTimeString();
@@ -5218,7 +5814,7 @@ async function pullPromosFromCloud() {
   const url = getSheetsUrl();
   if (!url) return;
   try {
-    const res = await fetch(url + '?action=restore_promos', { redirect: 'follow' });
+    const res = await fetch(authFetchUrl(url + '?action=restore_promos'), { redirect: 'follow' });
     if (!res.ok) return;
     const result = await res.json();
     if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
@@ -5281,7 +5877,7 @@ function autoSyncPush(type = 'menu') {
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'backup', data }),
+        body: JSON.stringify(authPostBody({ action: 'backup', data })),
         redirect: 'follow'
       }).then(r => r.json()).then(result => {
         if (result.status === 'ok') {
@@ -5305,7 +5901,7 @@ function autoSyncPush(type = 'menu') {
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'backup_transaksi_v2', data: allTrx }),
+        body: JSON.stringify(authPostBody({ action: 'backup_transaksi_v2', data: allTrx })),
         redirect: 'follow'
       }).catch(e => console.warn('Auto push transaksi failed:', e));
     }
@@ -5415,7 +6011,7 @@ async function syncKeSheets(isTest = false) {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'backup', data: data }),
+      body: JSON.stringify(authPostBody({ action: 'backup', data: data })),
       redirect: 'follow'
     });
     
@@ -5980,7 +6576,7 @@ function syncTransaksiKeSheets() {
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'backup_transaksi_v2', data: allTransaksi }),
+        body: JSON.stringify(authPostBody({ action: 'backup_transaksi_v2', data: allTransaksi })),
         redirect: 'follow'
       })
       .then(res => res.json())
@@ -6085,7 +6681,7 @@ function syncPromosToCloud() {
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'syncPromos', data: promos }),
+    body: JSON.stringify(authPostBody({ action: 'syncPromos', data: promos })),
     redirect: 'follow'
   }).catch(err => console.warn('Sync promo error:', err));
 }
