@@ -2298,7 +2298,7 @@ function authPostBody(body) {
   return { ...body, userId: _authUser.userId, token: _authUser.token };
 }
 
-// ── Login ──────────────────────────────────────────────────────────────────
+// -- Login ------------------------------------------------------------------
 async function doLoginClick() {
   const userId   = document.getElementById('login-id').value.trim();
   const password = document.getElementById('login-pass').value;
@@ -2382,7 +2382,7 @@ function onLoginSuccess() {
   startSessionCheck();
 }
 
-// ── Session Check (deteksi kick) ───────────────────────────────────────────
+// -- Session Check (deteksi kick) -------------------------------------------
 let _kickCountdownTimer = null;
 let _kickCountdownSeconds = 30;
 
@@ -2416,7 +2416,7 @@ function startKickCountdown() {
       clearInterval(_kickCountdownTimer);
       _kickCountdownTimer = null;
       tutupKickBanner();
-      forceLogout('Sesi berakhir — akun ini sudah login di perangkat lain.');
+      forceLogout('Sesi berakhir - akun ini sudah login di perangkat lain.');
     }
   }, 1000);
 }
@@ -2464,7 +2464,7 @@ function tutupKickBanner() {
   if (el) el.remove();
 }
 
-// User klik "Tetap di Sini" — login ulang di background untuk rebut session
+// User klik "Tetap di Sini" -- login ulang di background untuk rebut session
 async function tetapDisini() {
   clearInterval(_kickCountdownTimer);
   _kickCountdownTimer = null;
@@ -2478,7 +2478,7 @@ async function tetapDisini() {
     message: 'Masukkan password untuk tetap aktif di perangkat ini. Perangkat lain akan dikeluarkan.',
     labelOk: 'Tetap di Sini',
     onOk: async () => {
-      // Ambil password via prompt sederhana — minta re-login
+      // Ambil password via prompt sederhana -- minta re-login
       const pass = prompt('Masukkan password kamu:');
       if (!pass) return;
       try {
@@ -2492,7 +2492,7 @@ async function tetapDisini() {
         if (result.status === 'ok') {
           _authUser = { ..._authUser, token: result.token };
           localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
-          showToast('✅ Sesi dipulihkan — perangkat lain telah dikeluarkan');
+          showToast('✅ Sesi dipulihkan - perangkat lain telah dikeluarkan');
           startSessionCheck();
         } else {
           showToast('❌ Password salah');
@@ -2520,7 +2520,7 @@ function forceLogout(msg) {
   showLoginError(msg || 'Sesi berakhir, silakan login kembali.');
 }
 
-// ── Logout ─────────────────────────────────────────────────────────────────
+// -- Logout -----------------------------------------------------------------
 async function doLogoutClick() {
   tutupMenuUser();
   if (!_authUser) return;
@@ -2552,7 +2552,7 @@ function bukaMenuUser() {
 }
 function tutupMenuUser() { document.getElementById('modal-user-menu').style.display = 'none'; }
 
-// ── Kelola Akun ────────────────────────────────────────────────────────────
+// -- Kelola Akun ------------------------------------------------------------
 async function muatDaftarAkun() {
   const url = getSheetsUrl();
   if (!url || !_authUser) return;
@@ -2570,7 +2570,7 @@ async function muatDaftarAkun() {
         <div class="akun-row">
           <div class="ar-info">
             <div class="ar-id">${u.username} <span class="role-badge ${u.role}">${u.role}</span></div>
-            <div class="ar-role">ID: ${u.userId} · Dibuat: ${u.createdAt ? u.createdAt.split('T')[0] : '—'}</div>
+            <div class="ar-role">ID: ${u.userId} · Dibuat: ${u.createdAt ? u.createdAt.split('T')[0] : '-'}</div>
           </div>
           ${u.userId !== 'admin' ? `<button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;color:var(--red);border-color:var(--red);" onclick="hapusAkun('${u.userId}','${u.username}')">🗑️ Hapus</button>` : '<span style="font-size:11px;color:var(--muted);">Admin utama</span>'}
         </div>
@@ -2749,8 +2749,8 @@ function switchTab(id) {
   }
 
   if (id === 'akun') {
-    document.getElementById('akun-saya-nama').textContent = _authUser ? _authUser.username : '—';
-    document.getElementById('akun-saya-id').textContent = _authUser ? _authUser.userId : '—';
+    document.getElementById('akun-saya-nama').textContent = _authUser ? _authUser.username : '-';
+    document.getElementById('akun-saya-id').textContent = _authUser ? _authUser.userId : '-';
     muatDaftarAkun();
   }
   if (id === 'pos') {
@@ -2821,7 +2821,7 @@ function hitungHPP() {
   const porsi = parseFloat(document.getElementById('porsi').value) || 1;
   const kemasan = parseFloat(document.getElementById('biaya-kemasan').value) || 0;
 
-  // Hitung bahan — scope ke #bahan-list supaya tidak baca dari modal edit
+  // Hitung bahan -- scope ke #bahan-list supaya tidak baca dari modal edit
   let totalBahan = 0;
   const bahanRows = document.querySelectorAll('#bahan-list .bahan-row');
   const bahanDetail = [];
@@ -2841,7 +2841,7 @@ function hitungHPP() {
     bahanRaw.push({ nama: namaBahan, qty, hargaBeli, ukuranBeli, biaya: biayaBahan });
   });
 
-  // Hitung biaya operasional — scope ke #biaya-list supaya tidak baca dari modal edit
+  // Hitung biaya operasional -- scope ke #biaya-list supaya tidak baca dari modal edit
   let totalOperasional = 0;
   const biayaRows = document.querySelectorAll('#biaya-list .biaya-row');
   const biayaDetail = [];
@@ -3342,7 +3342,7 @@ function exportDetailPDF() {
     <div class="doc-header">
       <div>
         <div class="brand">🍱 Kedai Heula</div>
-        <div class="brand-sub">Kalkulator HPP – Referensi Bahan Baku</div>
+        <div class="brand-sub">Kalkulator HPP - Referensi Bahan Baku</div>
       </div>
       <div class="doc-meta">
         <div class="menu-name">${m.nama}</div>
@@ -3418,7 +3418,7 @@ function exportDetailPDF() {
     </div>
 
     <div class="doc-footer">
-      <span>Kedai Heula – Manajemen Bisnis Kuliner</span>
+      <span>Kedai Heula - Manajemen Bisnis Kuliner</span>
       <span>Dicetak: ${tanggalCetak}</span>
     </div>
   `;
@@ -3580,7 +3580,7 @@ function hitungEditHPP() {
   const h50 = roundHargaMakanan(hpp / (1 - 0.50));
   const h70 = roundHargaMakanan(hpp / (1 - 0.70));
 
-  document.getElementById('edit-hpp-preview').innerHTML = hpp <= 0 ? '—' : `
+  document.getElementById('edit-hpp-preview').innerHTML = hpp <= 0 ? '-' : `
     <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px;">
       <span style="font-size:13px;font-weight:800;color:var(--dark);">
         HPP: <span style="color:var(--red);font-size:16px;">${formatRp(hpp)}/pcs</span>
@@ -4873,7 +4873,7 @@ function updateHargaTerpilih() {
 }
 
 function pilihHarga(el, type) {
-  // Fungsi lama — sekarang tidak dipakai tapi tetap ada untuk backward compat
+  // Fungsi lama -- sekarang tidak dipakai tapi tetap ada untuk backward compat
 }
 
 function resetForm() {
@@ -5018,7 +5018,7 @@ function renderNotaBody(t) {
     </div>
 
     <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted);font-weight:700;">
-      — Terima kasih sudah belanja! —
+      - Terima kasih sudah belanja! -
     </div>
   `;
 }
@@ -5125,7 +5125,7 @@ function refreshDropdownDiskon() {
   const sel = document.getElementById('d-pilih-menu');
   const current = sel.value;
 
-  sel.innerHTML = '<option value="">— Pilih menu yang sudah dihitung HPP-nya —</option>';
+  sel.innerHTML = '<option value="">- Pilih menu yang sudah dihitung HPP-nya -</option>';
 
   if (data.length === 0) {
     sel.innerHTML += '<option value="" disabled>⚠️ Belum ada menu tersimpan di Ringkasan</option>';
@@ -5134,7 +5134,7 @@ function refreshDropdownDiskon() {
 
   data.forEach((m, i) => {
     const label = getCategoryLabel(m.kategori);
-    sel.innerHTML += `<option value="${i}">${label} ${m.nama} — HPP: ${formatRp(m.hpp)}</option>`;
+    sel.innerHTML += `<option value="${i}">${label} ${m.nama} - HPP: ${formatRp(m.hpp)}</option>`;
   });
 
   // Pertahankan pilihan sebelumnya jika masih ada
@@ -5203,7 +5203,7 @@ function hitungDiskon() {
   if (isDangerous) {
     verdictText = `⚠️ <strong>BONCOS!</strong> Promo diskon ${diskon}% ini bikin kamu rugi ${formatRp(Math.abs(profitPerPcs))} per pcs. Minimal harga jual setelah diskon harus <strong>${formatRp(Math.ceil(minHargaDiskon))}</strong> biar balik modal.`;
   } else if (isWarning) {
-    verdictText = `😬 <strong>Hati-hati!</strong> Masih untung tipis (${marginPromo.toFixed(1)}%). Promo ini oke buat menarik pelanggan baru tapi jangan kelamaan ya. Maksimal 7–14 hari.`;
+    verdictText = `😬 <strong>Hati-hati!</strong> Masih untung tipis (${marginPromo.toFixed(1)}%). Promo ini oke buat menarik pelanggan baru tapi jangan kelamaan ya. Maksimal 7-14 hari.`;
   } else {
     verdictText = `✅ <strong>Aman dijalankan!</strong> Margin promo masih ${marginPromo.toFixed(1)}%, turun dari ${marginNormal.toFixed(1)}% normal. Cocok buat promo pembukaan atau flash sale!`;
   }
@@ -5253,7 +5253,7 @@ function hitungDiskon() {
 // =====================
 function getBundleMenuOptions(selectedNama = '') {
   const data = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-  let opts = `<option value="">— Pilih dari ringkasan —</option>`;
+  let opts = `<option value="">- Pilih dari ringkasan -</option>`;
   data.forEach((m, i) => {
     const sel = m.nama === selectedNama ? 'selected' : '';
     opts += `<option value="${i}" ${sel}>${getCategoryLabel(m.kategori)} ${m.nama}</option>`;
@@ -5376,7 +5376,7 @@ function hitungBundling() {
   };
 
   const normalInfo = totalHargaJualNormal > 0
-    ? `<div style="font-size:12px;color:#666;margin-bottom:12px;">💰 Total harga satuan: <strong>${formatRp(totalHargaJualNormal)}</strong> → hemat <strong>${formatRp(totalHargaJualNormal - offlineStandar)}</strong> dengan paket standar</div>`
+    ? `<div style="font-size:12px;color:#666;margin-bottom:12px;">💰 Total harga satuan: <strong>${formatRp(totalHargaJualNormal)}</strong> -> hemat <strong>${formatRp(totalHargaJualNormal - offlineStandar)}</strong> dengan paket standar</div>`
     : '';
 
   const el = document.getElementById('bundling-result');
@@ -5402,7 +5402,7 @@ function hitungBundling() {
               <td>${i.nama}</td>
               <td class="text-right">${i.qty}x</td>
               <td class="text-right">${formatRp(i.hpp)}</td>
-              <td class="text-right">${i.hj > 0 ? formatRp(i.hj) : '<span style="color:var(--muted)">—</span>'}</td>
+              <td class="text-right">${i.hj > 0 ? formatRp(i.hj) : '<span style="color:var(--muted)">-</span>'}</td>
               <td class="text-right">${formatRp(i.subtotalHPP)}</td>
             </tr>`).join('')}
           <tr style="border-top:2px solid var(--border);font-weight:800;">
@@ -5610,7 +5610,7 @@ function hitungBeliGratis() {
 // Debounce timer untuk auto-push
 let _autoSyncTimer = null;
 
-// ── Helper: parse tanggal WIB string ke timestamp number ───────────────────
+// -- Helper: parse tanggal WIB string ke timestamp number -------------------
 function parseTanggal(str) {
   if (!str) return 0;
   // Format: "21/02/2026, 05.34" atau ISO string
@@ -5625,7 +5625,7 @@ function parseTanggal(str) {
   } catch(e) { return 0; }
 }
 
-// ── Deduplikasi array menu: per id, ambil yang tanggal paling baru ──────────
+// -- Deduplikasi array menu: per id, ambil yang tanggal paling baru ----------
 function dedupMenu(arr) {
   const map = {};
   arr.forEach(item => {
@@ -5646,7 +5646,7 @@ function dedupMenu(arr) {
   return Object.values(map);
 }
 
-// ── Dipanggil saat app pertama kali dibuka ──────────────────────────────────
+// -- Dipanggil saat app pertama kali dibuka ----------------------------------
 async function autoSyncOnLoad() {
   const url = getSheetsUrl();
   if (!url) return;
@@ -5699,7 +5699,7 @@ async function autoSyncOnLoad() {
   }
 }
 
-// ── Sync manual: pull cloud → merge (timestamp wins) → push merged ke cloud ─
+// -- Sync manual: pull cloud -> merge (timestamp wins) -> push merged ke cloud -
 async function syncManual() {
   const url = getSheetsUrl();
   if (!url) { bukaSyncConfig(); return; }
@@ -5714,7 +5714,7 @@ async function syncManual() {
       fetch(authFetchUrl(url + '?action=restore_promos'), { redirect: 'follow' }),
     ]);
 
-    // STEP 2: Merge menu — timestamp terbaru menang, deduplikasi
+    // STEP 2: Merge menu -- timestamp terbaru menang, deduplikasi
     let finalMenu = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
     if (resMenu.ok) {
       const r = await resMenu.json();
@@ -5723,7 +5723,7 @@ async function syncManual() {
       }
     }
 
-    // STEP 3: Merge promo — id unik, cloud + lokal
+    // STEP 3: Merge promo -- id unik, cloud + lokal
     let finalPromo = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
     if (resPromo.ok) {
       const r = await resPromo.json();
@@ -5771,7 +5771,7 @@ async function bersihkanDuplikat() {
   showKonfirmasi({
     icon: '🧹',
     title: 'Bersihkan Duplikat?',
-    message: 'Data duplikat di lokal dan Google Sheets akan dihapus. Proses ini aman — hanya menghapus salinan ganda, data asli tetap ada.',
+    message: 'Data duplikat di lokal dan Google Sheets akan dihapus. Proses ini aman - hanya menghapus salinan ganda, data asli tetap ada.',
     labelOk: 'Ya, Bersihkan',
     onOk: async () => {
       const url = getSheetsUrl();
@@ -5933,7 +5933,7 @@ function updateSyncStatus() {
   const el = document.getElementById('sync-status');
   if (!el) return;
   if (!url) {
-    el.textContent = 'Belum dikonfigurasi — klik Setup untuk mulai';
+    el.textContent = 'Belum dikonfigurasi - klik Setup untuk mulai';
     el.style.color = 'var(--muted)';
   } else if (lastSync) {
     el.textContent = '✅ Terakhir sync: ' + lastSync;
@@ -6040,10 +6040,10 @@ async function syncKeSheets(isTest = false) {
     
     if (e.message.includes('Failed to fetch')) {
       errorMsg += ': Cek URL atau deploy ulang Apps Script';
-      debugLog('💡 TIP: Buka Setup → cek URL sudah benar', true);
+      debugLog('💡 TIP: Buka Setup -> cek URL sudah benar', true);
     } else if (e.message.includes('HTTP 404')) {
       errorMsg += ': URL tidak ditemukan';
-      debugLog('💡 TIP: Deploy ulang Apps Script → copy URL baru', true);
+      debugLog('💡 TIP: Deploy ulang Apps Script -> copy URL baru', true);
     } else if (e.message.includes('HTTP 403')) {
       errorMsg += ': Permission ditolak';
       debugLog('💡 TIP: Set "Who has access" = Anyone di Apps Script', true);
@@ -6376,7 +6376,7 @@ function renderBreakdownMenu(transaksiList) {
     <td class="text-right"><strong>${totalTransaksi}x</strong></td>
     <td class="text-right"><strong>${formatRp(totalProfit)}</strong></td>
     <td class="text-right"><strong>100%</strong></td>
-    <td class="text-right">—</td>
+    <td class="text-right">-</td>
   </tr>`;
 
   html += '</tbody></table>';
@@ -6546,7 +6546,7 @@ function renderTabelTransaksi(transaksiList) {
 function syncTransaksiKeSheets() {
   const url = getSheetsUrl();
   if (!url) {
-    showToast('⚠️ Setup Google Sheets dulu di Ringkasan Menu → Setup Cloud');
+    showToast('⚠️ Setup Google Sheets dulu di Ringkasan Menu -> Setup Cloud');
     bukaSyncConfig();
     return;
   }
@@ -6883,7 +6883,7 @@ function exportLaporanPDF() {
           <td class="pr-num"><strong>${totalTransaksi}x</strong></td>
           <td class="pr-num"><strong>${formatRp(totalProfit)}</strong></td>
           <td class="pr-num"><strong>100%</strong></td>
-          <td class="pr-num">—</td>
+          <td class="pr-num">-</td>
         </tr>
       </tbody>
     </table>
@@ -6906,7 +6906,7 @@ function exportLaporanPDF() {
     </table>
 
     <div class="doc-footer">
-      <span>Kedai Heula – Laporan Penjualan</span>
+      <span>Kedai Heula - Laporan Penjualan</span>
       <span>Dicetak: ${tanggalCetak}</span>
     </div>
   `;
