@@ -928,40 +928,91 @@
 
     /* ── LOGIN SCREEN ─────────────────────────────────────────── */
   #login-screen {
-    position: fixed; inset: 0; z-index: 9999;
-    background: linear-gradient(135deg, var(--red) 0%, var(--orange) 60%, var(--yellow) 100%);
-    display: flex; align-items: center; justify-content: center; padding: 20px;
+    position: fixed; inset: 0; z-index: 99999;
+    background: linear-gradient(135deg, #E03027 0%, #F47C20 60%, #FFC107 100%);
+    display: flex; align-items: flex-start; justify-content: center; 
+    padding: 20px; overflow-y: auto;
+    min-height: 100vh; width: 100vw;
   }
-  #login-screen.hidden { display: none; }
+  #login-screen.hidden { display: none !important; }
+  /* === FLOATING FOOD PARTICLES === */
+  .login-particle {
+    position: absolute; font-size: 28px; opacity: 0.12;
+    animation: floatUp 8s ease-in-out infinite;
+    pointer-events: none; user-select: none;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0.12; }
+    50%  { opacity: 0.2; }
+    100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+  }
+  /* === LOGIN BOX === */
   .login-box {
-    background: var(--card); border-radius: 24px; padding: 36px 28px;
-    width: 100%; max-width: 380px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    position: relative; z-index: 1;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 28px; padding: 40px 32px;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
   }
-  .login-logo { text-align: center; margin-bottom: 28px; }
-  .login-logo .emoji { font-size: 56px; display: block; margin-bottom: 8px; }
-  .login-logo h1 { font-family: 'Fredoka One', cursive; font-size: 28px; color: var(--red); }
-  .login-logo p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .login-logo { text-align: center; margin-bottom: 32px; }
+  .login-logo-icon {
+    width: 80px; height: 80px; border-radius: 24px; margin: 0 auto 16px;
+    background: linear-gradient(135deg, #E03027, #F47C20);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px; box-shadow: 0 8px 24px rgba(224,48,39,0.5);
+  }
+  .login-logo h1 {
+    font-family: 'Fredoka One', cursive; font-size: 30px; color: white;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .login-logo p { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 6px; font-weight: 600; }
+  
+  .login-divider {
+    height: 1px; background: rgba(255,255,255,0.15); margin: 24px 0;
+  }
   .login-field { margin-bottom: 16px; }
-  .login-field label { display: block; font-size: 13px; font-weight: 800; margin-bottom: 6px; color: var(--dark); }
+  .login-field label {
+    display: block; font-size: 11px; font-weight: 800; margin-bottom: 8px;
+    color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .login-field-wrap {
+    position: relative; display: flex; align-items: center;
+  }
+  .login-field-icon {
+    position: absolute; left: 14px; font-size: 16px; pointer-events: none;
+  }
   .login-field input {
-    width: 100%; padding: 12px 14px; border-radius: 12px;
-    border: 2px solid var(--border); font-size: 15px; font-family: 'Nunito', sans-serif;
-    outline: none; transition: border-color 0.2s;
+    width: 100%; padding: 13px 14px 13px 42px; border-radius: 14px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1);
+    color: white; font-size: 15px; font-family: 'Nunito', sans-serif; font-weight: 600;
+    outline: none; transition: all 0.2s;
+    backdrop-filter: blur(4px);
   }
-  .login-field input:focus { border-color: var(--orange); }
+  .login-field input::placeholder { color: rgba(255,255,255,0.4); }
+  .login-field input:focus {
+    border-color: rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.15);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
+  }
   .login-btn {
-    width: 100%; padding: 14px; border-radius: 12px; border: none;
-    background: linear-gradient(135deg, var(--red), var(--orange));
+    width: 100%; padding: 15px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, #E03027 0%, #F47C20 100%);
     color: white; font-size: 16px; font-weight: 800; font-family: 'Nunito', sans-serif;
-    cursor: pointer; margin-top: 8px; transition: opacity 0.2s;
+    cursor: pointer; margin-top: 8px;
+    box-shadow: 0 6px 20px rgba(224,48,39,0.5);
+    transition: transform 0.15s, box-shadow 0.15s;
   }
-  .login-btn:hover { opacity: 0.9; }
-  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(224,48,39,0.6); }
+  .login-btn:active { transform: translateY(1px); box-shadow: 0 3px 12px rgba(224,48,39,0.4); }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   .login-error {
-    background: #FFF0EF; border: 2px solid var(--red); border-radius: 10px;
-    padding: 10px 14px; font-size: 13px; color: var(--red); font-weight: 700;
-    margin-top: 12px; display: none;
+    background: rgba(224,48,39,0.2); border: 1.5px solid rgba(224,48,39,0.6); border-radius: 12px;
+    padding: 10px 14px; font-size: 13px; color: #FFB3B0; font-weight: 700;
+    margin-top: 12px; display: none; text-align: center;
   }
   /* User badge di header */
   #user-badge {
@@ -996,27 +1047,51 @@
 
 <!-- ── LOGIN SCREEN ──────────────────────────────────────────── -->
 <div id="login-screen">
+  <!-- Floating food particles -->
+  <span class="login-particle" style="left:8%;top:90%;animation-delay:0s;animation-duration:9s;">🍱</span>
+  <span class="login-particle" style="left:20%;top:85%;animation-delay:1.5s;animation-duration:11s;font-size:22px;">🐙</span>
+  <span class="login-particle" style="left:35%;top:92%;animation-delay:3s;animation-duration:8s;font-size:20px;">🥟</span>
+  <span class="login-particle" style="left:55%;top:88%;animation-delay:0.8s;animation-duration:13s;">🍗</span>
+  <span class="login-particle" style="left:70%;top:93%;animation-delay:2.2s;animation-duration:10s;font-size:20px;">🧆</span>
+  <span class="login-particle" style="left:85%;top:87%;animation-delay:4s;animation-duration:9s;font-size:22px;">🍢</span>
+  <span class="login-particle" style="left:92%;top:91%;animation-delay:1s;animation-duration:12s;font-size:18px;">⭐</span>
+
   <div class="login-box">
     <div class="login-logo">
-      <span class="emoji">🍱</span>
+      <div class="login-logo-icon">🍱</div>
       <h1>Kedai Heula</h1>
-      <p>Masuk untuk mulai kelola bisnis</p>
+      <p>Manajemen Bisnis Kuliner</p>
     </div>
+
+    <div class="login-divider"></div>
+
     <div class="login-field">
       <label>ID Pengguna</label>
-      <input type="text" id="login-id" placeholder="Masukkan ID..." autocomplete="username"
-        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()" />
+      <div class="login-field-wrap">
+        <span class="login-field-icon">👤</span>
+        <input type="text" id="login-id" placeholder="Masukkan ID kamu..."
+          autocomplete="username"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()" />
+      </div>
     </div>
     <div class="login-field">
       <label>Password</label>
-      <input type="password" id="login-pass" placeholder="Masukkan password..."
-        onkeydown="if(event.key==='Enter')doLoginClick()" />
+      <div class="login-field-wrap">
+        <span class="login-field-icon">🔒</span>
+        <input type="password" id="login-pass" placeholder="Masukkan password..."
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLoginClick()" />
+      </div>
     </div>
-    <button class="login-btn" id="login-btn" onclick="doLoginClick()">🔓 Masuk</button>
+
+    <button class="login-btn" id="login-btn" onclick="doLoginClick()">
+      🔓 &nbsp;Masuk
+    </button>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
 
+<div id="app-wrapper" style="display:none;">
 <header>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--orange));display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 2px 8px rgba(224,48,39,0.3);">🍱</div>
@@ -2346,6 +2421,8 @@ function showLoginError(msg) {
 function onLoginSuccess() {
   // Sembunyikan login screen, tampilkan app
   document.getElementById('login-screen').classList.add('hidden');
+  const appWrapper = document.getElementById('app-wrapper');
+  if (appWrapper) appWrapper.style.display = '';
   document.getElementById('login-pass').value = '';
 
   // Set role di body untuk CSS
@@ -2517,6 +2594,8 @@ function forceLogout(msg) {
   _authUser = null;
   localStorage.removeItem('kedaiHeula_auth');
   document.getElementById('login-screen').classList.remove('hidden');
+  const appWrap = document.getElementById('app-wrapper');
+  if (appWrap) appWrap.style.display = 'none';
   document.body.classList.remove('role-admin', 'role-kasir');
   showLoginError(msg || 'Sesi berakhir, silakan login kembali.');
 }
@@ -2539,6 +2618,8 @@ async function doLogoutClick() {
   _authUser = null;
   localStorage.removeItem('kedaiHeula_auth');
   document.getElementById('login-screen').classList.remove('hidden');
+  const appWrap = document.getElementById('app-wrapper');
+  if (appWrap) appWrap.style.display = 'none';
   document.body.classList.remove('role-admin', 'role-kasir');
   document.getElementById('login-id').value = '';
   document.getElementById('login-pass').value = '';
@@ -2729,11 +2810,8 @@ window.onload = () => {
             _authUser = parsed;
             onLoginSuccess();
           });
-        } else if (!url && parsed.userId) {
-          // Belum ada URL - tetap masuk (offline mode)
-          _authUser = parsed;
-          onLoginSuccess();
         } else {
+          // Tidak ada URL atau data tidak lengkap - hapus saved auth, paksa login
           localStorage.removeItem('kedaiHeula_auth');
         }
       } catch(e) {
@@ -2781,7 +2859,7 @@ function switchTab(id) {
     renderPOSBundling();
     updatePOSSummary();
     refreshPromoDropdown();
-    pullTrxFromCloud();
+    if (localStorage.getItem('kedaiHeula_sheetsUrl')) pullTrxFromCloud();
   }
 }
 
@@ -6946,5 +7024,6 @@ function exportLaporanPDF() {
 
 // Init: sudah digabung di window.onload di atas
 </script>
+</div><!-- end app-wrapper -->
 </body>
 </html>
