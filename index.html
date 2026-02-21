@@ -1204,6 +1204,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="bukaSyncConfig()">⚙️ Setup URL</button>
         <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="syncManual()">🔄 Sync Sekarang</button>
+        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;background:#FFF0F0;color:var(--red);border-color:var(--red);" onclick="bersihkanDuplikat()">🧹 Bersihkan Duplikat</button>
       </div>
     </div>
 
@@ -5013,57 +5014,79 @@ function hitungBeliGratis() {
 // Debounce timer untuk auto-push
 let _autoSyncTimer = null;
 
-// Dipanggil saat app pertama kali dibuka - pull data terbaru dari cloud
+// ── Helper: parse tanggal WIB string ke timestamp number ───────────────────
+function parseTanggal(str) {
+  if (!str) return 0;
+  // Format: "21/02/2026, 05.34" atau ISO string
+  try {
+    if (str.includes('/')) {
+      const [tgl, jam] = str.split(', ');
+      const [d, m, y] = tgl.split('/');
+      const [h, mn] = (jam || '00.00').split('.');
+      return new Date(`${y}-${m}-${d}T${h}:${mn}:00`).getTime();
+    }
+    return new Date(str).getTime() || 0;
+  } catch(e) { return 0; }
+}
+
+// ── Deduplikasi array menu: per id, ambil yang tanggal paling baru ──────────
+function dedupMenu(arr) {
+  const map = {};
+  arr.forEach(item => {
+    if (!item.id) {
+      // Item lama tanpa id: pakai nama+hpp sebagai fallback key
+      item.id = 'menu_' + btoa(encodeURIComponent((item.nama || '') + '_' + (item.hpp || 0))).substring(0, 20);
+    }
+    const existing = map[item.id];
+    if (!existing) {
+      map[item.id] = item;
+    } else {
+      // Ambil yang lebih baru berdasarkan tanggal
+      if (parseTanggal(item.tanggal) > parseTanggal(existing.tanggal)) {
+        map[item.id] = item;
+      }
+    }
+  });
+  return Object.values(map);
+}
+
+// ── Dipanggil saat app pertama kali dibuka ──────────────────────────────────
 async function autoSyncOnLoad() {
   const url = getSheetsUrl();
   if (!url) return;
 
-  // Tampilkan indikator sync
   const statusEl = document.getElementById('sync-status');
   if (statusEl) { statusEl.textContent = '🔄 Menyinkronkan data...'; statusEl.style.color = 'var(--orange)'; }
 
   try {
-    // Pull menu - merge berdasarkan id (bukan nama+tanggal)
+    // 1. Pull menu dari cloud
     const resMenu = await fetch(url + '?action=restore', { redirect: 'follow' });
     if (resMenu.ok) {
       const result = await resMenu.json();
-      if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
+      if (result.status === 'ok' && Array.isArray(result.data)) {
         const lokal = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-
-        // Pastikan semua item lokal punya id
-        lokal.forEach(item => {
-          if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
-        });
-
-        // Buat map dari cloud: id → item (cloud sebagai sumber kebenaran)
-        const cloudMap = {};
-        result.data.forEach(item => {
-          if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
-          cloudMap[item.id] = item;
-        });
-
-        // Tambahkan item lokal yang tidak ada di cloud (belum tersync)
-        lokal.forEach(item => {
-          if (!cloudMap[item.id]) cloudMap[item.id] = item;
-        });
-
-        const merged = Object.values(cloudMap);
+        // Gabungkan cloud + lokal, deduplikasi by id (timestamp terbaru menang)
+        const merged = dedupMenu([...result.data, ...lokal]);
         localStorage.setItem('kedaiHeula_menu', JSON.stringify(merged));
         menuList = merged;
         renderRingkasan();
+        // Push hasil merged kembali ke cloud agar bersih
+        if (merged.length !== result.data.length) {
+          fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup', data: merged }), redirect: 'follow' }).catch(() => {});
+        }
       }
     }
 
-    // Pull promo
+    // 2. Pull promo dari cloud
     const resPromo = await fetch(url + '?action=restore_promos', { redirect: 'follow' });
     if (resPromo.ok) {
       const result = await resPromo.json();
-      if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
+      if (result.status === 'ok' && Array.isArray(result.data)) {
         const lokal = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
-        const merged = [...result.data];
-        lokal.forEach(p => {
-          if (!merged.some(m => m.id == p.id)) merged.push(p);
-        });
+        const cloudMap = {};
+        result.data.forEach(p => { if (p.id) cloudMap[p.id] = p; });
+        lokal.forEach(p => { if (p.id && !cloudMap[p.id]) cloudMap[p.id] = p; });
+        const merged = Object.values(cloudMap);
         localStorage.setItem('kedaiHeula_promos', JSON.stringify(merged));
         renderPromoList();
         refreshPromoDropdown();
@@ -5075,13 +5098,12 @@ async function autoSyncOnLoad() {
     updateSyncStatus();
 
   } catch(e) {
-    // Silent fail - tidak ganggu user jika cloud tidak bisa diakses
     console.warn('Auto sync failed:', e.message);
     updateSyncStatus();
   }
 }
 
-// Sync manual dipanggil dari tombol "Sync Sekarang" 
+// ── Sync manual: pull cloud → merge (timestamp wins) → push merged ke cloud ─
 async function syncManual() {
   const url = getSheetsUrl();
   if (!url) { bukaSyncConfig(); return; }
@@ -5090,29 +5112,108 @@ async function syncManual() {
   if (statusEl) { statusEl.textContent = '🔄 Menyinkronkan...'; statusEl.style.color = 'var(--orange)'; }
 
   try {
-    // Push semua data lokal ke cloud dulu
-    const menuData = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-    const promoData = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+    // STEP 1: Pull dari cloud dulu
+    const [resMenu, resPromo] = await Promise.all([
+      fetch(url + '?action=restore', { redirect: 'follow' }),
+      fetch(url + '?action=restore_promos', { redirect: 'follow' }),
+    ]);
+
+    // STEP 2: Merge menu — timestamp terbaru menang, deduplikasi
+    let finalMenu = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+    if (resMenu.ok) {
+      const r = await resMenu.json();
+      if (r.status === 'ok' && Array.isArray(r.data)) {
+        finalMenu = dedupMenu([...r.data, ...finalMenu]);
+      }
+    }
+
+    // STEP 3: Merge promo — id unik, cloud + lokal
+    let finalPromo = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+    if (resPromo.ok) {
+      const r = await resPromo.json();
+      if (r.status === 'ok' && Array.isArray(r.data)) {
+        const map = {};
+        r.data.forEach(p => { if (p.id) map[p.id] = p; });
+        finalPromo.forEach(p => { if (p.id && !map[p.id]) map[p.id] = p; });
+        finalPromo = Object.values(map);
+      }
+    }
+
+    // STEP 4: Simpan hasil merge ke lokal
+    localStorage.setItem('kedaiHeula_menu', JSON.stringify(finalMenu));
+    menuList = finalMenu;
+    localStorage.setItem('kedaiHeula_promos', JSON.stringify(finalPromo));
+
+    // STEP 5: Push hasil merged (bersih) ke cloud
     const allKeys = Object.keys(localStorage).filter(k => k.startsWith('kedaiHeula_pos_'));
     let allTrx = [];
     allKeys.forEach(k => { try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {} });
 
     await Promise.allSettled([
-      menuData.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup', data: menuData }), redirect: 'follow' }),
-      promoData.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'syncPromos', data: promoData }), redirect: 'follow' }),
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup', data: finalMenu }), redirect: 'follow' }),
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'syncPromos', data: finalPromo }), redirect: 'follow' }),
       allTrx.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup_transaksi_v2', data: allTrx }), redirect: 'follow' }),
     ]);
 
-    // Lalu pull terbaru dari cloud
-    await autoSyncOnLoad();
+    // STEP 6: Update UI
+    renderRingkasan();
+    renderPromoList();
+    refreshPromoDropdown();
     await pullTrxFromCloud();
 
-    showToast('✅ Sync selesai!');
+    const now = getWIBDateTimeString();
+    localStorage.setItem('kedaiHeula_lastSync', now);
+    updateSyncStatus();
+    showToast('✅ Sync selesai! Data sudah bersih.');
   } catch(e) {
     showToast('❌ Sync gagal: ' + e.message);
     if (statusEl) { statusEl.textContent = '❌ Sync gagal'; statusEl.style.color = 'var(--red)'; }
   }
 }
+// Bersihkan duplikat di localStorage dan sync ke cloud
+async function bersihkanDuplikat() {
+  showKonfirmasi({
+    icon: '🧹',
+    title: 'Bersihkan Duplikat?',
+    message: 'Data duplikat di lokal dan Google Sheets akan dihapus. Proses ini aman — hanya menghapus salinan ganda, data asli tetap ada.',
+    labelOk: 'Ya, Bersihkan',
+    onOk: async () => {
+      const url = getSheetsUrl();
+      const lokal = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+      const sebelum = lokal.length;
+      
+      // Deduplikasi lokal
+      const bersih = dedupMenu(lokal);
+      const sesudah = bersih.length;
+      
+      localStorage.setItem('kedaiHeula_menu', JSON.stringify(bersih));
+      menuList = bersih;
+      renderRingkasan();
+
+      // Push yang sudah bersih ke cloud
+      if (url) {
+        try {
+          showToast('🧹 Membersihkan... harap tunggu');
+          await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'backup', data: bersih }),
+            redirect: 'follow'
+          });
+          const now = getWIBDateTimeString();
+          localStorage.setItem('kedaiHeula_lastSync', now);
+          updateSyncStatus();
+          showToast(`✅ Selesai! ${sebelum - sesudah} duplikat dihapus. Tersisa ${sesudah} menu.`);
+        } catch(e) {
+          showToast(`✅ Lokal bersih (${sebelum - sesudah} duplikat dihapus), tapi gagal update cloud: ` + e.message);
+        }
+      } else {
+        showToast(`✅ ${sebelum - sesudah} duplikat dihapus dari lokal. Setup cloud untuk sync.`);
+      }
+    }
+  });
+}
+
 async function pullPromosFromCloud() {
   const url = getSheetsUrl();
   if (!url) return;
@@ -5122,8 +5223,10 @@ async function pullPromosFromCloud() {
     const result = await res.json();
     if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
       const lokal = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
-      const merged = [...result.data];
-      lokal.forEach(p => { if (!merged.some(m => m.id == p.id)) merged.push(p); });
+      const map = {};
+      result.data.forEach(p => { if (p.id) map[p.id] = p; });
+      lokal.forEach(p => { if (p.id && !map[p.id]) map[p.id] = p; });
+      const merged = Object.values(map);
       localStorage.setItem('kedaiHeula_promos', JSON.stringify(merged));
       renderPromoList();
       refreshPromoDropdown();
