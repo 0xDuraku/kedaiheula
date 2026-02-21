@@ -1199,12 +1199,11 @@
     <div id="sync-bar" style="background:#FFFAF5;border:2px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div style="flex:1;min-width:160px;">
         <div style="font-size:13px;font-weight:800;color:var(--dark);">☁️ Cloud Backup (Google Sheets)</div>
-        <div id="sync-status" style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px;">Belum dikonfigurasi</div>
+        <div id="sync-status" style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px;">Menyinkronkan...</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="bukaSyncConfig()">⚙️ Setup</button>
-        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="syncKeSheets()" id="btn-sync">⬆️ Backup</button>
-        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="restoreFromSheets()" id="btn-restore">⬇️ Restore</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="bukaSyncConfig()">⚙️ Setup URL</button>
+        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="syncManual()">🔄 Sync Sekarang</button>
       </div>
     </div>
 
@@ -2143,18 +2142,26 @@ function switchTab(id) {
   document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
   event.currentTarget.classList.add('active');
+
   if (id === 'ringkasan') { renderRingkasan(); updateSyncStatus(); }
   if (id === 'laporan') initLaporan();
-  if (id === 'promo') { 
-    refreshDropdownDiskon(); 
+
+  // Fix 1: Pull promo terbaru dari cloud saat buka tab Promo
+  if (id === 'promo') {
+    refreshDropdownDiskon();
     refreshAllBundleDropdowns();
     refreshDropdownBeliGratis();
+    renderPromoList();
+    pullPromosFromCloud();
   }
+
+  // Fix 2: Pull transaksi POS terbaru dari cloud saat buka tab POS
   if (id === 'pos') {
     renderPOSGrid();
     renderPOSBundling();
     updatePOSSummary();
     refreshPromoDropdown();
+    pullTrxFromCloud();
   }
 }
 
@@ -5074,7 +5081,92 @@ async function autoSyncOnLoad() {
   }
 }
 
-// Auto-push ke cloud setiap ada perubahan data (debounced 2 detik)
+// Sync manual dipanggil dari tombol "Sync Sekarang" 
+async function syncManual() {
+  const url = getSheetsUrl();
+  if (!url) { bukaSyncConfig(); return; }
+
+  const statusEl = document.getElementById('sync-status');
+  if (statusEl) { statusEl.textContent = '🔄 Menyinkronkan...'; statusEl.style.color = 'var(--orange)'; }
+
+  try {
+    // Push semua data lokal ke cloud dulu
+    const menuData = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+    const promoData = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+    const allKeys = Object.keys(localStorage).filter(k => k.startsWith('kedaiHeula_pos_'));
+    let allTrx = [];
+    allKeys.forEach(k => { try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {} });
+
+    await Promise.allSettled([
+      menuData.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup', data: menuData }), redirect: 'follow' }),
+      promoData.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'syncPromos', data: promoData }), redirect: 'follow' }),
+      allTrx.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'backup_transaksi_v2', data: allTrx }), redirect: 'follow' }),
+    ]);
+
+    // Lalu pull terbaru dari cloud
+    await autoSyncOnLoad();
+    await pullTrxFromCloud();
+
+    showToast('✅ Sync selesai!');
+  } catch(e) {
+    showToast('❌ Sync gagal: ' + e.message);
+    if (statusEl) { statusEl.textContent = '❌ Sync gagal'; statusEl.style.color = 'var(--red)'; }
+  }
+}
+async function pullPromosFromCloud() {
+  const url = getSheetsUrl();
+  if (!url) return;
+  try {
+    const res = await fetch(url + '?action=restore_promos', { redirect: 'follow' });
+    if (!res.ok) return;
+    const result = await res.json();
+    if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
+      const lokal = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+      const merged = [...result.data];
+      lokal.forEach(p => { if (!merged.some(m => m.id == p.id)) merged.push(p); });
+      localStorage.setItem('kedaiHeula_promos', JSON.stringify(merged));
+      renderPromoList();
+      refreshPromoDropdown();
+      refreshAllBundleDropdowns();
+      refreshDropdownDiskon();
+      refreshDropdownBeliGratis();
+    }
+  } catch(e) { console.warn('Pull promo failed:', e.message); }
+}
+
+// Pull transaksi POS dari cloud (dipanggil saat buka tab POS)
+async function pullTrxFromCloud() {
+  const url = getSheetsUrl();
+  if (!url) return;
+  try {
+    const res = await fetch(url + '?action=restore_transaksi_v2', { redirect: 'follow' });
+    if (!res.ok) return;
+    const result = await res.json();
+    if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
+      // Simpan ke localStorage per tanggal
+      const byDate = {};
+      result.data.forEach(t => {
+        if (!t.timestamp) return;
+        const tgl = t.timestamp.split('T')[0];
+        if (!byDate[tgl]) byDate[tgl] = [];
+        byDate[tgl].push(t);
+      });
+
+      Object.entries(byDate).forEach(([tgl, trxList]) => {
+        const key = `kedaiHeula_pos_${tgl}`;
+        const lokal = JSON.parse(localStorage.getItem(key) || '[]');
+        const merged = [...lokal];
+        trxList.forEach(t => {
+          if (!merged.some(m => String(m.id) === String(t.id))) merged.push(t);
+        });
+        localStorage.setItem(key, JSON.stringify(merged));
+      });
+
+      // Update summary POS
+      updatePOSSummary();
+    }
+  } catch(e) { console.warn('Pull transaksi failed:', e.message); }
+}
 function autoSyncPush(type = 'menu') {
   clearTimeout(_autoSyncTimer);
   _autoSyncTimer = setTimeout(() => {
