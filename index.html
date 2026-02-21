@@ -990,6 +990,7 @@
   .role-badge.admin { background: #FFF0EF; color: var(--red); }
   .role-badge.kasir { background: #E8F5E9; color: var(--green); }
 
+</style>
 </head>
 <body>
 
@@ -2367,7 +2368,7 @@ function onLoginSuccess() {
     document.getElementById('tab-pos').classList.add('active');
     document.getElementById('tab-btn-pos').classList.add('active');
     renderPOSGrid(); renderPOSBundling(); updatePOSSummary(); refreshPromoDropdown();
-    pullTrxFromCloud();
+    if (localStorage.getItem('kedaiHeula_sheetsUrl')) pullTrxFromCloud();
   } else {
     // Admin ke hitung HPP
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -2375,7 +2376,7 @@ function onLoginSuccess() {
     document.getElementById('tab-hitung').classList.add('active');
     const firstAdminTab = document.querySelector('.tab-admin-only');
     if (firstAdminTab) firstAdminTab.classList.add('active');
-    autoSyncOnLoad();
+    if (localStorage.getItem('kedaiHeula_sheetsUrl')) autoSyncOnLoad();
   }
 
   // Mulai session check setiap 30 detik
@@ -2706,15 +2707,37 @@ window.onload = () => {
       localStorage.setItem('kedaiHeula_sheetsUrl', DEFAULT_APPS_SCRIPT_URL);
     }
 
-    // Cek saved session
+    // Cek saved session - verify ke server dulu sebelum masuk
     const savedAuth = localStorage.getItem('kedaiHeula_auth');
     if (savedAuth) {
       try {
-        _authUser = JSON.parse(savedAuth);
-        onLoginSuccess(); // Langsung masuk tanpa login ulang
+        const parsed = JSON.parse(savedAuth);
+        const url = localStorage.getItem('kedaiHeula_sheetsUrl');
+        if (url && parsed.userId && parsed.token) {
+          // Verify session ke server
+          const verifyUrl = url + '?action=ping&userId=' + encodeURIComponent(parsed.userId) + '&token=' + encodeURIComponent(parsed.token);
+          fetch(verifyUrl).then(r => r.json()).then(result => {
+            if (result.status === 'ok') {
+              _authUser = parsed;
+              onLoginSuccess();
+            } else {
+              // Session tidak valid - hapus dan tampilkan login
+              localStorage.removeItem('kedaiHeula_auth');
+            }
+          }).catch(() => {
+            // Offline / server error - tetap masuk dengan saved session
+            _authUser = parsed;
+            onLoginSuccess();
+          });
+        } else if (!url && parsed.userId) {
+          // Belum ada URL - tetap masuk (offline mode)
+          _authUser = parsed;
+          onLoginSuccess();
+        } else {
+          localStorage.removeItem('kedaiHeula_auth');
+        }
       } catch(e) {
         localStorage.removeItem('kedaiHeula_auth');
-        // Tampilkan login screen
       }
     }
     // Kalau tidak ada saved session, login screen sudah visible by default
@@ -2745,7 +2768,7 @@ function switchTab(id) {
     refreshAllBundleDropdowns();
     refreshDropdownBeliGratis();
     renderPromoList();
-    pullPromosFromCloud();
+    if (localStorage.getItem('kedaiHeula_sheetsUrl')) pullPromosFromCloud();
   }
 
   if (id === 'akun') {
