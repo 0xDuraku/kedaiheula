@@ -2495,10 +2495,29 @@ async function doLoginClick() {
       showLoginError(result.message || 'Login gagal');
     }
   } catch(e) {
+    // DEMO LOGIN FALLBACK - Untuk testing tanpa backend
+    const demoUsers = {
+      'admin': { password: 'admin123', username: 'Admin Kedai', role: 'admin' },
+      'kasir': { password: 'kasir123', username: 'Kasir Jaga', role: 'kasir' }
+    };
+    
+    if (demoUsers[userId] && demoUsers[userId].password === password) {
+      _authUser = { 
+        userId, 
+        username: demoUsers[userId].username, 
+        role: demoUsers[userId].role, 
+        token: 'demo-' + Date.now() 
+      };
+      localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
+      onLoginSuccess();
+      return; // Exit early, skip error display
+    }
+    
+    // Original error handling
     if (e.name === 'AbortError') {
-      showLoginError('Timeout! Server tidak merespons dalam 20 detik. Cek koneksi & URL Apps Script.');
+      showLoginError('⚠️ Timeout! Gunakan demo: admin/admin123 atau kasir/kasir123');
     } else {
-      showLoginError('Error: ' + e.message);
+      showLoginError('⚠️ ' + e.message + ' → Demo: admin/admin123 atau kasir/kasir123');
     }
   } finally {
     btn.disabled = false; btn.textContent = '🔓 Masuk';
