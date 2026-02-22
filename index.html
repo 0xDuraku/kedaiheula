@@ -2459,13 +2459,31 @@ async function doLoginClick() {
     const url = getSheetsUrl();
     if (!url) { showLoginError('URL Apps Script belum dikonfigurasi'); btn.disabled = false; btn.textContent = '🔓 Masuk'; return; }
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'login', userId, password }),
-      redirect: 'follow'
-    });
-    const result = await res.json();
+    // Timeout 20 detik untuk Google Apps Script yang bisa lambat
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'login', userId, password }),
+        redirect: 'follow',
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    
+    const rawText = await res.text();
+    let result;
+    try {
+      result = JSON.parse(rawText);
+    } catch(parseErr) {
+      const preview = rawText.substring(0, 200).replace(/[<>]/g, ' ');
+      throw new Error('Response tidak valid. Pastikan Apps Script sudah di-deploy ulang → New Version. Info: ' + preview.substring(0, 80));
+    }
 
     if (result.status === 'ok') {
       _authUser = { userId: result.userId, username: result.username, role: result.role, token: result.token };
@@ -2477,7 +2495,11 @@ async function doLoginClick() {
       showLoginError(result.message || 'Login gagal');
     }
   } catch(e) {
-    showLoginError('Gagal terhubung ke server: ' + e.message);
+    if (e.name === 'AbortError') {
+      showLoginError('Timeout! Server tidak merespons dalam 20 detik. Cek koneksi & URL Apps Script.');
+    } else {
+      showLoginError('Error: ' + e.message);
+    }
   } finally {
     btn.disabled = false; btn.textContent = '🔓 Masuk';
   }
