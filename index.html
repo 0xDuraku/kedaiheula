@@ -2450,6 +2450,8 @@ async function doLoginClick() {
   const btn      = document.getElementById('login-btn');
   const errEl    = document.getElementById('login-error');
 
+  console.log('🔍 DEBUG: Login attempt -', userId);
+
   if (!userId || !password) { showLoginError('ID dan password tidak boleh kosong'); return; }
 
   btn.disabled = true; btn.textContent = '⏳ Masuk...';
@@ -2457,7 +2459,35 @@ async function doLoginClick() {
 
   try {
     const url = getSheetsUrl();
-    if (!url) { showLoginError('URL Apps Script belum dikonfigurasi'); btn.disabled = false; btn.textContent = '🔓 Masuk'; return; }
+    console.log('🔍 DEBUG: Backend URL -', url);
+    if (!url) { 
+      console.log('🔍 DEBUG: No URL, checking demo login...');
+      // DEMO LOGIN - No backend
+      const demoUsers = {
+        'admin': { password: 'admin123', username: 'Admin Kedai', role: 'admin' },
+        'kasir': { password: 'kasir123', username: 'Kasir Jaga', role: 'kasir' }
+      };
+      
+      if (demoUsers[userId] && demoUsers[userId].password === password) {
+        console.log('✅ DEBUG: Demo login SUCCESS!');
+        _authUser = { 
+          userId, 
+          username: demoUsers[userId].username, 
+          role: demoUsers[userId].role, 
+          token: 'demo-' + Date.now() 
+        };
+        localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
+        btn.disabled = false; btn.textContent = '🔓 Masuk';
+        onLoginSuccess();
+        return;
+      } else {
+        console.log('❌ DEBUG: Demo credentials invalid');
+        showLoginError('❌ Demo: admin/admin123 atau kasir/kasir123'); 
+        btn.disabled = false; 
+        btn.textContent = '🔓 Masuk'; 
+        return; 
+      }
+    }
 
     // Timeout 20 detik untuk Google Apps Script yang bisa lambat
     const controller = new AbortController();
@@ -2495,29 +2525,10 @@ async function doLoginClick() {
       showLoginError(result.message || 'Login gagal');
     }
   } catch(e) {
-    // DEMO LOGIN FALLBACK - Untuk testing tanpa backend
-    const demoUsers = {
-      'admin': { password: 'admin123', username: 'Admin Kedai', role: 'admin' },
-      'kasir': { password: 'kasir123', username: 'Kasir Jaga', role: 'kasir' }
-    };
-    
-    if (demoUsers[userId] && demoUsers[userId].password === password) {
-      _authUser = { 
-        userId, 
-        username: demoUsers[userId].username, 
-        role: demoUsers[userId].role, 
-        token: 'demo-' + Date.now() 
-      };
-      localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
-      onLoginSuccess();
-      return; // Exit early, skip error display
-    }
-    
-    // Original error handling
     if (e.name === 'AbortError') {
-      showLoginError('⚠️ Timeout! Gunakan demo: admin/admin123 atau kasir/kasir123');
+      showLoginError('Timeout! Server tidak merespons dalam 20 detik. Cek koneksi & URL Apps Script.');
     } else {
-      showLoginError('⚠️ ' + e.message + ' → Demo: admin/admin123 atau kasir/kasir123');
+      showLoginError('Error: ' + e.message);
     }
   } finally {
     btn.disabled = false; btn.textContent = '🔓 Masuk';
