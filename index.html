@@ -930,156 +930,141 @@
   #login-screen {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     z-index: 99999;
+    background: var(--bg);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    overflow: hidden; padding: 20px;
-    background: #1C0A0A;
+    padding: 20px; overflow-y: auto;
   }
-  /* Animated background blobs */
+  #login-screen.hidden { display: none !important; }
+
+  /* Decorative top stripe */
   #login-screen::before {
     content: '';
-    position: absolute; width: 600px; height: 600px;
-    border-radius: 50%; top: -200px; left: -150px;
-    background: radial-gradient(circle, #E03027 0%, transparent 70%);
-    opacity: 0.25; animation: blobPulse 6s ease-in-out infinite;
+    position: fixed; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--red), var(--orange), var(--yellow));
+    z-index: 1;
   }
-  #login-screen::after {
-    content: '';
-    position: absolute; width: 500px; height: 500px;
-    border-radius: 50%; bottom: -150px; right: -100px;
-    background: radial-gradient(circle, #F47C20 0%, transparent 70%);
-    opacity: 0.2; animation: blobPulse 8s ease-in-out infinite reverse;
-  }
-  @keyframes blobPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.15); }
-  }
-  /* Floating food particles */
-  .login-particle {
-    position: absolute; font-size: 26px; opacity: 0;
-    animation: floatParticle 10s ease-in infinite;
-    pointer-events: none; user-select: none; z-index: 0;
-  }
-  @keyframes floatParticle {
-    0%   { transform: translateY(0) rotate(0deg) scale(0.8); opacity: 0; }
-    10%  { opacity: 0.18; }
-    90%  { opacity: 0.1; }
-    100% { transform: translateY(-110vh) rotate(540deg) scale(1.1); opacity: 0; }
-  }
-  /* Main login card */
+
   .login-box {
-    position: relative; z-index: 1;
-    width: 100%; max-width: 420px;
-    background: #2A0F0F;
-    border: 1px solid rgba(244,124,32,0.25);
-    border-radius: 28px;
-    padding: 0;
-    box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+    width: 100%; max-width: 400px;
+    background: var(--card);
+    border-radius: 24px;
+    box-shadow: 0 8px 40px rgba(224,48,39,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    border: 1.5px solid var(--border);
     overflow: hidden;
+    animation: modalIn 0.3s ease;
   }
-  /* Card top banner */
+
+  @keyframes loginIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Header banner - same gradient as app header */
   .login-banner {
-    background: linear-gradient(135deg, #E03027 0%, #C0392B 40%, #8B1A1A 100%);
-    padding: 36px 36px 32px;
+    background: linear-gradient(135deg, var(--red) 0%, var(--orange) 60%, var(--yellow) 100%);
+    padding: 28px 28px 24px;
     text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .login-banner::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
   .login-app-icon {
-    width: 72px; height: 72px; margin: 0 auto 14px;
-    background: rgba(0,0,0,0.25);
-    border-radius: 20px; display: flex; align-items: center; justify-content: center;
-    font-size: 38px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    width: 64px; height: 64px; margin: 0 auto 12px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
   }
   .login-app-name {
     font-family: 'Fredoka One', cursive;
-    font-size: 26px; color: white; line-height: 1;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    font-size: 24px; color: white;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.2);
   }
   .login-app-tagline {
-    font-size: 12px; color: rgba(255,255,255,0.65);
-    margin-top: 6px; font-weight: 600; letter-spacing: 0.5px;
+    font-size: 12px; color: rgba(255,255,255,0.8);
+    margin-top: 4px; font-weight: 600;
   }
-  /* Card body */
+
+  /* Form body - same style as modal-body */
   .login-body {
-    padding: 32px 36px 28px;
+    padding: 24px 24px 20px;
   }
-  .login-field { margin-bottom: 18px; }
+
+  .login-field { margin-bottom: 16px; }
   .login-field label {
-    display: block; font-size: 11px; font-weight: 800;
-    color: rgba(255,255,255,0.45); text-transform: uppercase;
-    letter-spacing: 1.2px; margin-bottom: 8px;
+    display: block;
+    font-size: 11px; font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
   }
   .login-input-wrap {
     position: relative; display: flex; align-items: center;
   }
   .login-input-icon {
-    position: absolute; left: 14px; font-size: 15px;
-    pointer-events: none; opacity: 0.5;
+    position: absolute; left: 13px;
+    font-size: 15px; pointer-events: none;
+    opacity: 0.5;
   }
   .login-field input {
-    width: 100%; padding: 13px 14px 13px 44px;
-    background: rgba(255,255,255,0.06);
-    border: 1.5px solid rgba(255,255,255,0.1);
-    border-radius: 14px; color: white;
-    font-size: 15px; font-family: 'Nunito', sans-serif; font-weight: 600;
+    width: 100%;
+    padding: 12px 14px 12px 40px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    color: var(--dark);
+    font-size: 14px; font-family: 'Nunito', sans-serif; font-weight: 600;
     outline: none; transition: all 0.2s;
   }
-  .login-field input::placeholder { color: rgba(255,255,255,0.25); }
+  .login-field input::placeholder { color: #bbb; font-weight: 500; }
   .login-field input:focus {
-    border-color: #F47C20;
-    background: rgba(244,124,32,0.08);
+    border-color: var(--orange);
+    background: white;
     box-shadow: 0 0 0 3px rgba(244,124,32,0.12);
   }
+
+  /* Button - same as btn btn-primary */
   .login-btn {
-    width: 100%; padding: 15px; border-radius: 14px; border: none;
-    background: linear-gradient(135deg, #E03027 0%, #F47C20 100%);
+    width: 100%; padding: 13px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, var(--red), var(--orange));
     color: white; font-size: 15px; font-weight: 800;
     font-family: 'Nunito', sans-serif;
-    cursor: pointer; margin-top: 6px;
-    box-shadow: 0 6px 20px rgba(224,48,39,0.45);
-    transition: all 0.2s; letter-spacing: 0.3px;
+    cursor: pointer; margin-top: 4px;
+    box-shadow: 0 4px 14px rgba(224,48,39,0.35);
+    transition: all 0.2s;
   }
-  .login-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 28px rgba(224,48,39,0.55);
-  }
-  .login-btn:active { transform: translateY(0); }
-  .login-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+  .login-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+  .login-btn:active { transform: translateY(0); opacity: 1; }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
   .login-error {
-    margin-top: 14px; padding: 11px 14px;
-    background: rgba(224,48,39,0.15);
-    border: 1.5px solid rgba(224,48,39,0.4);
-    border-radius: 12px; font-size: 13px;
-    color: #FF8A80; font-weight: 700;
+    margin-top: 12px; padding: 10px 14px;
+    background: var(--light-red);
+    border: 2px solid var(--red);
+    border-radius: 10px;
+    font-size: 13px; color: var(--red); font-weight: 700;
     display: none; text-align: center;
   }
+
   /* Footer */
   .login-footer {
-    padding: 16px 36px 22px;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 14px 24px 18px;
+    border-top: 2px solid var(--border);
     text-align: center;
   }
   .login-footer-copy {
-    font-size: 11px; color: rgba(255,255,255,0.22);
-    font-weight: 600; line-height: 1.6;
+    font-size: 11px; color: var(--muted);
+    font-weight: 600; line-height: 1.7;
   }
   .login-footer-copy a {
-    color: rgba(244,124,32,0.6); text-decoration: none;
+    color: var(--orange); text-decoration: none; font-weight: 700;
   }
-  .login-footer-copy a:hover { color: #F47C20; }
+  .login-footer-copy a:hover { text-decoration: underline; }
   .login-version {
-    display: inline-block; margin-top: 8px;
-    font-size: 10px; color: rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.05);
-    border-radius: 20px; padding: 3px 10px;
-    font-weight: 700; letter-spacing: 0.5px;
+    display: inline-block; margin-top: 6px;
+    font-size: 10px; color: var(--muted);
+    background: var(--border);
+    border-radius: 20px; padding: 2px 10px;
+    font-weight: 700;
   }
     /* User badge di header */
   #user-badge {
@@ -1113,62 +1098,64 @@
 <body>
 
 <!-- ── LOGIN SCREEN ──────────────────────────────────────────── -->
-<div id="login-screen">
-  <!-- Animated particles -->
-  <span class="login-particle" style="left:5%;top:95%;animation-delay:0s;animation-duration:12s;">🍱</span>
-  <span class="login-particle" style="left:15%;top:90%;animation-delay:2s;animation-duration:9s;font-size:20px;">🐙</span>
-  <span class="login-particle" style="left:28%;top:95%;animation-delay:4s;animation-duration:11s;font-size:18px;">🥟</span>
-  <span class="login-particle" style="left:45%;top:92%;animation-delay:1s;animation-duration:10s;font-size:22px;">🍗</span>
-  <span class="login-particle" style="left:62%;top:95%;animation-delay:3s;animation-duration:13s;font-size:18px;">🧆</span>
-  <span class="login-particle" style="left:75%;top:90%;animation-delay:5s;animation-duration:9s;font-size:20px;">🍢</span>
-  <span class="login-particle" style="left:88%;top:95%;animation-delay:1.5s;animation-duration:11s;">🌟</span>
-  <span class="login-particle" style="left:35%;top:95%;animation-delay:6s;animation-duration:8s;font-size:16px;">🥡</span>
-  <span class="login-particle" style="left:55%;top:90%;animation-delay:7s;animation-duration:14s;font-size:16px;">⭐</span>
+<div id="login-screen" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;background:#FFF4E6;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
 
-  <div class="login-box">
-    <!-- Top banner -->
-    <div class="login-banner">
-      <div class="login-app-icon">🍱</div>
-      <div class="login-app-name">Kedai Heula</div>
-      <div class="login-app-tagline">Manajemen Bisnis Kuliner — Jajanan Mantap Pisan!</div>
+  <div style="width:100%;max-width:400px;background:#FFFAF5;border-radius:24px;box-shadow:0 8px 40px rgba(224,48,39,0.15),0 2px 8px rgba(0,0,0,0.08);border:1.5px solid #FFE4CC;overflow:hidden;font-family:'Nunito',sans-serif;">
+
+    <!-- Banner merah gradient -->
+    <div style="background:linear-gradient(135deg,#E03027 0%,#F47C20 60%,#F5C518 100%);padding:28px 28px 24px;text-align:center;">
+      <div style="width:64px;height:64px;margin:0 auto 12px;background:rgba(255,255,255,0.2);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 4px 16px rgba(0,0,0,0.2);">🍱</div>
+      <div style="font-family:'Fredoka One',cursive;font-size:24px;color:white;text-shadow:0 1px 4px rgba(0,0,0,0.2);">Kedai Heula</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.85);margin-top:4px;font-weight:600;">Manajemen Bisnis Kuliner — Jajanan Mantap Pisan!</div>
     </div>
 
-    <!-- Form -->
-    <div class="login-body">
-      <div class="login-field">
-        <label>ID Pengguna</label>
-        <div class="login-input-wrap">
-          <span class="login-input-icon">👤</span>
+    <!-- Form body -->
+    <div style="padding:24px 24px 20px;">
+
+      <!-- ID field -->
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">ID Pengguna</label>
+        <div style="position:relative;">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;opacity:0.45;pointer-events:none;">👤</span>
           <input type="text" id="login-id"
             placeholder="Masukkan ID kamu..."
             autocomplete="username"
-            onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()" />
+            onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()"
+            style="width:100%;padding:12px 14px 12px 40px;border-radius:12px;border:2px solid #FFE4CC;background:#FFF4E6;color:#1A1A1A;font-size:14px;font-family:'Nunito',sans-serif;font-weight:600;outline:none;box-sizing:border-box;" />
         </div>
       </div>
-      <div class="login-field">
-        <label>Password</label>
-        <div class="login-input-wrap">
-          <span class="login-input-icon">🔒</span>
+
+      <!-- Password field -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:11px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Password</label>
+        <div style="position:relative;">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;opacity:0.45;pointer-events:none;">🔒</span>
           <input type="password" id="login-pass"
             placeholder="Masukkan password..."
             autocomplete="current-password"
-            onkeydown="if(event.key==='Enter')doLoginClick()" />
+            onkeydown="if(event.key==='Enter')doLoginClick()"
+            style="width:100%;padding:12px 14px 12px 40px;border-radius:12px;border:2px solid #FFE4CC;background:#FFF4E6;color:#1A1A1A;font-size:14px;font-family:'Nunito',sans-serif;font-weight:600;outline:none;box-sizing:border-box;" />
         </div>
       </div>
-      <button class="login-btn" id="login-btn" onclick="doLoginClick()">
-        Masuk ke Dashboard →
+
+      <!-- Tombol -->
+      <button id="login-btn" onclick="doLoginClick()"
+        style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#E03027,#F47C20);color:white;font-size:15px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(224,48,39,0.35);">
+        🔓 &nbsp;Masuk
       </button>
-      <div class="login-error" id="login-error"></div>
+
+      <!-- Error -->
+      <div id="login-error" style="display:none;margin-top:12px;padding:10px 14px;background:#FFF0EF;border:2px solid #E03027;border-radius:10px;font-size:13px;color:#E03027;font-weight:700;text-align:center;"></div>
     </div>
 
-    <!-- Footer info -->
-    <div class="login-footer">
-      <div class="login-footer-copy">
-        Developed by <a href="https://github.com/0xduraku" target="_blank">0xduraku</a>
-        &nbsp;·&nbsp; © 2025 Kedai Heula
-        <br>Sistem manajemen HPP &amp; kasir untuk UMKM kuliner
+    <!-- Footer -->
+    <div style="padding:14px 24px 18px;border-top:2px solid #FFE4CC;text-align:center;">
+      <div style="font-size:11px;color:#888;font-weight:600;line-height:1.7;">
+        Developed by <a href="https://github.com/0xduraku" target="_blank" style="color:#F47C20;text-decoration:none;font-weight:700;">0xduraku</a>
+        &nbsp;·&nbsp; © 2025 Kedai Heula<br>
+        Sistem manajemen HPP &amp; kasir untuk UMKM kuliner
       </div>
-      <span class="login-version">v2.0 · Auth Edition</span>
+      <span style="display:inline-block;margin-top:6px;font-size:10px;color:#888;background:#FFE4CC;border-radius:20px;padding:2px 10px;font-weight:700;">v2.0 · Auth Edition</span>
     </div>
   </div>
 </div>
@@ -2484,6 +2471,8 @@ async function doLoginClick() {
       _authUser = { userId: result.userId, username: result.username, role: result.role, token: result.token };
       localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
       onLoginSuccess();
+    } else if (result.message && result.message.includes('Unknown action')) {
+      showLoginError('Apps Script perlu di-update! Paste kode baru di script.google.com lalu Deploy → New version');
     } else {
       showLoginError(result.message || 'Login gagal');
     }
