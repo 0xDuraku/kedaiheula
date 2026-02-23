@@ -2495,35 +2495,10 @@ async function doLoginClick() {
       showLoginError(result.message || 'Login gagal');
     }
   } catch(e) {
-    console.log('❌ DEBUG: Backend failed, trying demo login...', e.message);
-    
-    // DEMO LOGIN FALLBACK
-    const demoUsers = {
-      'admin': { password: 'admin123', username: 'Admin Kedai', role: 'admin' },
-      'kasir': { password: 'kasir123', username: 'Kasir Jaga', role: 'kasir' }
-    };
-    
-    if (demoUsers[userId] && demoUsers[userId].password === password) {
-      console.log('✅ DEBUG: Demo login SUCCESS!');
-      _authUser = { 
-        userId, 
-        username: demoUsers[userId].username, 
-        role: demoUsers[userId].role, 
-        token: 'demo-' + Date.now() 
-      };
-      localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
-      btn.disabled = false;
-      btn.textContent = '🔓 Masuk';
-      onLoginSuccess();
-      return; // Exit - don't show error
-    }
-    
-    // If demo also fails, show original error
-    console.log('❌ DEBUG: Demo credentials mismatch');
     if (e.name === 'AbortError') {
-      showLoginError('⚠️ Timeout! Demo: admin/admin123 atau kasir/kasir123');
+      showLoginError('Timeout! Server tidak merespons dalam 20 detik. Cek koneksi & URL Apps Script.');
     } else {
-      showLoginError('⚠️ ' + e.message + ' → Demo: admin/admin123 atau kasir/kasir123');
+      showLoginError('Error: ' + e.message);
     }
   } finally {
     btn.disabled = false; btn.textContent = '🔓 Masuk';
@@ -2537,10 +2512,12 @@ function showLoginError(msg) {
 }
 
 function onLoginSuccess() {
-  // Sembunyikan login screen, tampilkan app
-  document.getElementById('login-screen').classList.add('hidden');
+  // Sembunyikan login screen, tampilkan app - pakai inline style langsung
+  const loginScreen = document.getElementById('login-screen');
+  loginScreen.style.display = 'none';
+  loginScreen.classList.add('hidden');
   const appWrapper = document.getElementById('app-wrapper');
-  if (appWrapper) appWrapper.style.display = '';
+  if (appWrapper) appWrapper.style.display = 'block';
   document.getElementById('login-pass').value = '';
 
   // Set role di body untuk CSS
@@ -2711,7 +2688,9 @@ function forceLogout(msg) {
   tutupKickBanner();
   _authUser = null;
   localStorage.removeItem('kedaiHeula_auth');
-  document.getElementById('login-screen').classList.remove('hidden');
+  const ls = document.getElementById('login-screen');
+  ls.classList.remove('hidden');
+  ls.style.display = '';
   const appWrap = document.getElementById('app-wrapper');
   if (appWrap) appWrap.style.display = 'none';
   document.body.classList.remove('role-admin', 'role-kasir');
@@ -2735,7 +2714,9 @@ async function doLogoutClick() {
   clearInterval(_sessionCheckTimer);
   _authUser = null;
   localStorage.removeItem('kedaiHeula_auth');
-  document.getElementById('login-screen').classList.remove('hidden');
+  const ls = document.getElementById('login-screen');
+  ls.classList.remove('hidden');
+  ls.style.display = '';
   const appWrap = document.getElementById('app-wrapper');
   if (appWrap) appWrap.style.display = 'none';
   document.body.classList.remove('role-admin', 'role-kasir');
