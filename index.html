@@ -1197,13 +1197,14 @@
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <div id="user-badge" onclick="bukaMenuUser()">
-      <div>
-        <div class="ub-name" id="ub-name">—</div>
-        <div class="ub-role" id="ub-role">—</div>
+    <button id="user-badge" onclick="bukaMenuUser()" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.3);border-radius:14px;padding:8px 14px 8px 10px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.28)'" onmouseout="this.style.background='rgba(255,255,255,0.18)'">
+      <div style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:17px;">👤</div>
+      <div style="text-align:left;">
+        <div class="ub-name" id="ub-name" style="color:white;font-size:13px;font-weight:800;line-height:1.2;">—</div>
+        <div class="ub-role" id="ub-role" style="color:rgba(255,255,255,0.75);font-size:10px;font-weight:600;"></div>
       </div>
-      <span style="color:white;font-size:18px;">▾</span>
-    </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
   </div>
 </header>
 
@@ -2316,10 +2317,10 @@
 <!-- Modal User Menu (logout dll) -->
 <!-- User dropdown (pojok kanan atas, bukan modal) -->
 <div id="modal-user-menu" style="display:none;position:fixed;top:72px;right:16px;z-index:9999;width:240px;background:white;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.08);border:1.5px solid var(--border);overflow:hidden;font-family:'Nunito',sans-serif;animation:modalIn 0.2s ease;">
-  <!-- Header card -->
-  <div style="background:linear-gradient(135deg,var(--red) 0%,var(--orange) 60%,var(--yellow) 100%);padding:18px 18px 16px;">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 2px 8px rgba(0,0,0,0.2);">👤</div>
+  <!-- Header gradient -->
+  <div style="background:linear-gradient(135deg,var(--red) 0%,var(--orange) 60%,var(--yellow) 100%);padding:16px 16px 14px;border-radius:18px 18px 0 0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:20px;">👤</div>
       <div>
         <div id="user-menu-title" style="color:white;font-size:14px;font-weight:800;line-height:1.2;">—</div>
         <div id="user-menu-role" style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:600;margin-top:2px;"></div>
@@ -2327,17 +2328,17 @@
     </div>
   </div>
   <!-- Menu items -->
-  <div style="padding:10px;">
+  <div style="padding:8px;">
     <button onclick="tutupMenuUser();bukaGantiPassword()"
-      style="width:100%;padding:11px 14px;border-radius:12px;border:none;background:transparent;color:var(--dark);font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;transition:background 0.15s;"
+      style="width:100%;padding:11px 14px;border-radius:12px;border:none;background:transparent;color:var(--dark);font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;"
       onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'">
-      🔑 <span>Ganti Password</span>
+      <span style="font-size:16px;">🔑</span> <span>Ganti Password</span>
     </button>
-    <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+    <div style="height:1px;background:var(--border);margin:2px 6px;"></div>
     <button onclick="doLogoutClick()"
-      style="width:100%;padding:11px 14px;border-radius:12px;border:none;background:transparent;color:var(--red);font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;transition:background 0.15s;"
+      style="width:100%;padding:11px 14px;border-radius:12px;border:none;background:transparent;color:var(--red);font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;"
       onmouseover="this.style.background='var(--light-red)'" onmouseout="this.style.background='transparent'">
-      🚪 <span>Keluar</span>
+      <span style="font-size:16px;">🚪</span> <span>Keluar</span>
     </button>
   </div>
 </div>
