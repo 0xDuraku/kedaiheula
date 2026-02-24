@@ -122,15 +122,25 @@
     border: none;
     border-radius: 12px;
     padding: 11px 14px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
     gap: 10px;
     cursor: pointer;
     transition: all 0.18s ease;
     font-family: 'Nunito', sans-serif;
     width: 100%;
     text-align: left;
+    min-width: 0;
+  }
+  
+  /* Sidebar selalu row di desktop */
+  @media (min-width: 769px) {
+    .tab-icon {
+      flex-direction: row !important;
+    }
+    .ti-icon { font-size: 20px !important; }
+    .ti-label { font-size: 13px !important; text-align: left !important; }
   }
 
   .tab-icon:hover {
@@ -1192,6 +1202,8 @@
   .role-badge.kasir { background: #E8F5E9; color: var(--green); }
 
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -1247,25 +1259,7 @@
     </div>
 
     <!-- Setup URL Panel (collapsible) -->
-    <div id="login-setup-section" style="display:none;padding:0 24px 16px;">
-      <div style="background:#FFF4E6;border:2px solid #FFE4CC;border-radius:14px;padding:14px;">
-        <div style="font-size:11px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⚙️ URL Apps Script</div>
-        <input type="url" id="login-url-input"
-          placeholder="https://script.google.com/macros/s/.../exec"
-          style="width:100%;padding:10px 12px;border-radius:10px;border:2px solid #FFE4CC;background:white;font-size:12px;font-family:'Nunito',sans-serif;font-weight:600;outline:none;box-sizing:border-box;margin-bottom:10px;color:#1A1A1A;" />
-        <div style="display:flex;gap:8px;">
-          <button onclick="simpanLoginUrl()"
-            style="flex:1;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,#E03027,#F47C20);color:white;font-size:13px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;">
-            💾 Simpan URL
-          </button>
-          <button onclick="document.getElementById('login-setup-section').style.display='none'"
-            style="padding:9px 14px;border-radius:10px;border:2px solid #FFE4CC;background:white;color:#888;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;">
-            ✕
-          </button>
-        </div>
-        <div id="login-url-status" style="display:none;margin-top:8px;font-size:12px;font-weight:700;text-align:center;"></div>
-      </div>
-    </div>
+    
 
     <!-- Footer -->
     <div style="padding:12px 24px 18px;border-top:2px solid #FFE4CC;text-align:center;">
@@ -1572,7 +1566,7 @@
     <!-- CLOUD SYNC BAR -->
     <div id="sync-bar" style="background:#FFFAF5;border:2px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div style="flex:1;min-width:160px;">
-        <div style="font-size:13px;font-weight:800;color:var(--dark);">☁️ Cloud Backup (Google Sheets)</div>
+        <div style="font-size:13px;font-weight:800;color:var(--dark);">🔥 Firebase Realtime Database</div>
         <div id="sync-status" style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px;">Menyinkronkan...</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -2570,73 +2564,176 @@
 </div><!-- end app-layout -->
 
 <script>
+
+// =====================
+// FIREBASE CONFIG
+// =====================
+const _FB_CONFIG = {
+  apiKey: "AIzaSyCsGuVqaCm3kd2FDXSSGS2EAZ4hk7mvIiU",
+  authDomain: "kedai-heula.firebaseapp.com",
+  databaseURL: "https://kedai-heula-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kedai-heula",
+  storageBucket: "kedai-heula.firebasestorage.app",
+  messagingSenderId: "881486739937",
+  appId: "1:881486739937:web:3ddedb1f882e7071c33aa0"
+};
+
+// Firebase SDK globals (loaded via CDN)
+let _fbApp, _fbDb, _fbRef, _fbSet, _fbGet, _fbUpdate, _fbRemove, _fbOnValue, _fbOff, _fbPush, _fbChild, _fbOnDisconnect;
+
+function initFirebase() {
+  _fbApp    = firebase.initializeApp(_FB_CONFIG);
+  _fbDb     = firebase.database();
+  _fbRef    = (path) => firebase.database().ref(path);
+  _fbSet    = (ref, val) => ref.set(val);
+  _fbGet    = (ref) => ref.get();
+  _fbUpdate = (ref, val) => ref.update(val);
+  _fbRemove = (ref) => ref.remove();
+  _fbOnValue = (ref, cb) => { ref.on('value', cb); return ref; };
+  _fbPush   = (ref, val) => ref.push(val);
+  _fbChild  = (ref, path) => ref.child(path);
+}
+
+// =====================
+// FIREBASE SHA-256 HASH
+// =====================
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // =====================
 // AUTH STATE
 // =====================
-let _authUser = null; // { userId, username, role, token }
+let _authUser = null;
 let _sessionCheckTimer = null;
+let _kickCountdownTimer = null;
+let _kickCountdownSeconds = 0;
+let _fbListeners = {}; // track realtime listeners
 
-function getAuthHeaders() {
-  if (!_authUser) return {};
-  return { userId: _authUser.userId, token: _authUser.token };
+// =====================
+// REALTIME LISTENERS
+// =====================
+function startRealtimeListeners() {
+  if (!_authUser) return;
+
+  // Listen menu changes
+  const menuRef = _fbRef('kedai_data/menu');
+  _fbListeners.menu = menuRef;
+  menuRef.on('value', (snap) => {
+    const data = snap.val();
+    if (data) {
+      const arr = Object.values(data);
+      menuList = arr;
+      localStorage.setItem('kedaiHeula_menu', JSON.stringify(arr));
+      renderRingkasan();
+      renderPOSGrid();
+      renderPOSBundling();
+    } else {
+      menuList = [];
+      localStorage.setItem('kedaiHeula_menu', '[]');
+      renderRingkasan();
+      renderPOSGrid();
+    }
+  });
+
+  // Listen promos changes
+  const promoRef = _fbRef('kedai_data/promos');
+  _fbListeners.promos = promoRef;
+  promoRef.on('value', (snap) => {
+    const data = snap.val();
+    const arr = data ? Object.values(data) : [];
+    localStorage.setItem('kedaiHeula_promos', JSON.stringify(arr));
+    if (typeof renderPromoList === 'function') renderPromoList();
+    if (typeof refreshPromoDropdown === 'function') refreshPromoDropdown();
+    if (typeof refreshDropdownDiskon === 'function') refreshDropdownDiskon();
+    if (typeof refreshAllBundleDropdowns === 'function') refreshAllBundleDropdowns();
+    renderPOSBundling();
+  });
+
+  // Listen transaksi changes
+  const trxRef = _fbRef('kedai_data/transaksi');
+  _fbListeners.transaksi = trxRef;
+  trxRef.on('value', (snap) => {
+    const data = snap.val();
+    const arr = data ? Object.values(data) : [];
+    localStorage.setItem('kedaiHeula_transaksi', JSON.stringify(arr));
+    updatePOSSummary();
+    if (typeof renderLaporan === 'function' && document.getElementById('tab-laporan').classList.contains('active')) {
+      renderLaporan();
+    }
+  });
+
+  // Listen session kick: jika token berubah di Firebase, user lain sudah login
+  const sessionRef = _fbRef(`users/${_authUser.userId}/currentToken`);
+  _fbListeners.session = sessionRef;
+  sessionRef.on('value', (snap) => {
+    const remoteToken = snap.val();
+    if (remoteToken && remoteToken !== _authUser.token) {
+      // Token berubah = device lain login
+      stopRealtimeListeners();
+      startKickCountdown();
+    }
+  });
 }
 
-function authFetchUrl(url) {
-  if (!_authUser) return url;
-  const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}userId=${encodeURIComponent(_authUser.userId)}&token=${encodeURIComponent(_authUser.token)}`;
+function stopRealtimeListeners() {
+  Object.entries(_fbListeners).forEach(([key, ref]) => {
+    if (ref && ref.off) ref.off('value');
+  });
+  _fbListeners = {};
 }
 
-function authPostBody(body) {
-  if (!_authUser) return body;
-  return { ...body, userId: _authUser.userId, token: _authUser.token };
-}
-
-// -- Login ------------------------------------------------------------------
+// =====================
+// LOGIN
+// =====================
 async function doLoginClick() {
-  const userId   = document.getElementById('login-id').value.trim();
+  const userId   = document.getElementById('login-id').value.trim().toLowerCase();
   const password = document.getElementById('login-pass').value;
   const btn      = document.getElementById('login-btn');
-  const errEl    = document.getElementById('login-error');
 
   if (!userId || !password) { showLoginError('ID dan password tidak boleh kosong'); return; }
 
-  btn.disabled = true; btn.textContent = '⏳ Masuk...';
-  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '⏳ Masuk...';
+  document.getElementById('login-error').style.display = 'none';
 
   try {
-    const url = getSheetsUrl();
-    if (!url) { showLoginError('URL Apps Script belum dikonfigurasi'); btn.disabled = false; btn.textContent = '🔓 Masuk'; return; }
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'login', userId, password }),
-      redirect: 'follow'
-    });
-    
-    const rawText = await res.text();
-    let result;
-    try {
-      result = JSON.parse(rawText);
-    } catch(parseErr) {
-      const preview = rawText.substring(0, 200).replace(/[<>]/g, ' ');
-      throw new Error('Response tidak valid. Pastikan Apps Script sudah di-deploy ulang → New Version. Info: ' + preview.substring(0, 80));
+    // Ambil data user dari Firebase
+    const snap = await _fbGet(_fbRef(`users/${userId}`));
+    if (!snap.exists()) {
+      showLoginError('ID pengguna tidak ditemukan');
+      return;
     }
 
-    if (result.status === 'ok') {
-      _authUser = { userId: result.userId, username: result.username, role: result.role, token: result.token };
-      localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
-      onLoginSuccess();
-    } else if (result.message && result.message.includes('Unknown action')) {
-      showLoginError('Apps Script perlu di-update! Paste kode baru di script.google.com lalu Deploy → New version');
-    } else {
-      showLoginError(result.message || 'Login gagal');
+    const userData = snap.val();
+    const inputHash = await sha256(password);
+
+    if (inputHash !== userData.passwordHash) {
+      showLoginError('Password salah');
+      return;
     }
+
+    // Buat token baru dan simpan ke Firebase (kick device lain)
+    const newToken = 'tok_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    await _fbUpdate(_fbRef(`users/${userId}`), { currentToken: newToken, lastLogin: new Date().toISOString() });
+
+    _authUser = {
+      userId: userData.userId,
+      username: userData.username,
+      role: userData.role,
+      token: newToken
+    };
+    localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
+    onLoginSuccess();
+
   } catch(e) {
     showLoginError('Gagal terhubung: ' + e.message);
   } finally {
-    btn.disabled = false; btn.textContent = '🔓 Masuk';
+    btn.disabled = false;
+    btn.textContent = '🔓 Masuk';
   }
 }
 
@@ -2646,137 +2743,13 @@ function showLoginError(msg) {
   el.style.display = 'block';
 }
 
-function bukaLoginSetupUrl() {
-  const section = document.getElementById('login-setup-section');
-  const input = document.getElementById('login-url-input');
-  const isHidden = !section.style.display || section.style.display === 'none';
-  if (isHidden) {
-    input.value = localStorage.getItem('kedaiHeula_sheetsUrl') || '';
-    section.style.display = 'block';
-    setTimeout(() => input.focus(), 100);
-  } else {
-    section.style.display = 'none';
-  }
-}
-
-function simpanLoginUrl() {
-  const url = document.getElementById('login-url-input').value.trim();
-  const statusEl = document.getElementById('login-url-status');
-  if (!url || !url.startsWith('https://script.google.com')) {
-    statusEl.textContent = '⚠️ URL tidak valid!';
-    statusEl.style.color = '#E03027';
-    statusEl.style.display = 'block';
-    return;
-  }
-  localStorage.setItem('kedaiHeula_sheetsUrl', url);
-  statusEl.textContent = '✅ Tersimpan! Silakan login.';
-  statusEl.style.color = '#27AE60';
-  statusEl.style.display = 'block';
-  setTimeout(() => {
-    document.getElementById('login-setup-section').style.display = 'none';
-    statusEl.style.display = 'none';
-  }, 1500);
-}
-
-function bukaLoginSetupUrl() {
-  const section = document.getElementById('login-setup-section');
-  const input = document.getElementById('login-url-input');
-  const current = localStorage.getItem('kedaiHeula_sheetsUrl') || '';
-  input.value = current;
-  section.style.display = section.style.display === 'none' ? 'block' : 'none';
-}
-
-function simpanLoginUrl() {
-  const url = document.getElementById('login-url-input').value.trim();
-  if (!url || !url.startsWith('https://script.google.com')) {
-    alert('URL tidak valid! Harus dimulai dengan https://script.google.com');
-    return;
-  }
-  localStorage.setItem('kedaiHeula_sheetsUrl', url);
-  document.getElementById('login-setup-section').style.display = 'none';
-  showLoginError('');
-  document.getElementById('login-error').style.display = 'none';
-  const statusEl2 = document.getElementById('login-url-status');
-  if (statusEl2) {
-    statusEl2.textContent = '✅ URL tersimpan! Silakan login.';
-    statusEl2.style.color = '#27AE60';
-    statusEl2.style.display = 'block';
-    setTimeout(() => {
-      const sec = document.getElementById('login-setup-section');
-      if (sec) sec.style.display = 'none';
-      statusEl2.style.display = 'none';
-    }, 1500);
-  }
-}
-
-function onLoginSuccess() {
-  // Sembunyikan login screen, tampilkan app - pakai inline style langsung
-  const loginScreen = document.getElementById('login-screen');
-  loginScreen.style.display = 'none';
-  loginScreen.classList.add('hidden');
-  const appWrapper = document.getElementById('app-wrapper');
-  if (appWrapper) appWrapper.style.display = 'block';
-  document.getElementById('login-pass').value = '';
-
-  // Set role di body untuk CSS
-  document.body.classList.remove('role-admin', 'role-kasir');
-  document.body.classList.add('role-' + _authUser.role);
-
-  // Update user badge
-  document.getElementById('ub-name').textContent = _authUser.username;
-  document.getElementById('ub-role').textContent = _authUser.role === 'admin' ? '⚙️ Admin' : '💰 Kasir';
-
-  // Update halaman akun saya
-  document.getElementById('akun-saya-nama').textContent = _authUser.username;
-  document.getElementById('akun-saya-id').textContent = _authUser.userId;
-
-  // Aktifkan tab yang sesuai
-  if (_authUser.role === 'kasir') {
-    // Kasir langsung ke POS
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
-    document.getElementById('tab-pos').classList.add('active');
-    document.getElementById('tab-btn-pos').classList.add('active');
-    renderPOSGrid(); renderPOSBundling(); updatePOSSummary(); refreshPromoDropdown();
-    if (localStorage.getItem('kedaiHeula_sheetsUrl')) pullTrxFromCloud();
-  } else {
-    // Admin ke hitung HPP
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
-    document.getElementById('tab-hitung').classList.add('active');
-    const firstAdminTab = document.querySelector('.tab-admin-only');
-    if (firstAdminTab) firstAdminTab.classList.add('active');
-    if (localStorage.getItem('kedaiHeula_sheetsUrl')) autoSyncOnLoad();
-  }
-
-  // Mulai session check setiap 30 detik
-  startSessionCheck();
-}
-
-// -- Session Check (deteksi kick) -------------------------------------------
-let _kickCountdownTimer = null;
-let _kickCountdownSeconds = 30;
-
+// -- Session Check (realtime via Firebase listener sudah handle ini)
 function startSessionCheck() {
-  clearInterval(_sessionCheckTimer);
-  _sessionCheckTimer = setInterval(async () => {
-    if (!_authUser) return;
-    try {
-      const url = getSheetsUrl();
-      if (!url) return;
-      const res = await fetch(authFetchUrl(url + '?action=ping'), { redirect: 'follow' });
-      const result = await res.json();
-      if (result.status === 'unauthorized') {
-        clearInterval(_sessionCheckTimer);
-        startKickCountdown();
-      }
-    } catch(e) {} // silent fail jika offline
-  }, 30000);
+  // Tidak perlu polling - Firebase listener di startRealtimeListeners() sudah handle
 }
 
 function startKickCountdown() {
-  if (_kickCountdownTimer) return; // sudah berjalan
-
+  if (_kickCountdownTimer) return;
   _kickCountdownSeconds = 30;
   showKickBanner(_kickCountdownSeconds);
 
@@ -2817,8 +2790,8 @@ function showKickBanner(secs) {
       padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;
       font-family:'Nunito',sans-serif;white-space:nowrap;
     ">✋ Tetap di Sini</button>
-    <button onclick="logoutSekarang()" style="
-      background:rgba(0,0,0,0.2);color:white;border:2px solid rgba(255,255,255,0.4);
+    <button onclick="doLogoutClick()" style="
+      background:rgba(255,255,255,0.2);color:white;border:2px solid rgba(255,255,255,0.4);
       border-radius:10px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;
       font-family:'Nunito',sans-serif;white-space:nowrap;
     ">🚪 Logout Sekarang</button>
@@ -2835,234 +2808,303 @@ function tutupKickBanner() {
   if (el) el.remove();
 }
 
-// User klik "Tetap di Sini" -- login ulang di background untuk rebut session
 async function tetapDisini() {
-  clearInterval(_kickCountdownTimer);
-  _kickCountdownTimer = null;
-  tutupKickBanner();
+  if (!_authUser) return;
+  try {
+    // Buat token baru - register device ini lagi
+    const newToken = 'tok_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    await _fbUpdate(_fbRef(`users/${_authUser.userId}`), { currentToken: newToken });
+    _authUser.token = newToken;
+    localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
+    clearInterval(_kickCountdownTimer);
+    _kickCountdownTimer = null;
+    tutupKickBanner();
+    startRealtimeListeners();
+    showToast('✅ Kamu tetap masuk!');
+  } catch(e) {
+    showToast('❌ Gagal: ' + e.message);
+  }
+}
 
-  // Re-login dengan token yang tersimpan tidak bisa, harus minta password
-  // Tampilkan dialog konfirmasi password
+// -- Logout
+async function doLogoutClick() {
   showKonfirmasi({
-    icon: '🔑',
-    title: 'Konfirmasi Password',
-    message: 'Masukkan password untuk tetap aktif di perangkat ini. Perangkat lain akan dikeluarkan.',
-    labelOk: 'Tetap di Sini',
-    onOk: async () => {
-      // Ambil password via prompt sederhana -- minta re-login
-      const pass = prompt('Masukkan password kamu:');
-      if (!pass) return;
-      try {
-        const url = getSheetsUrl();
-        const res = await fetch(url, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'login', userId: _authUser.userId, password: pass }),
-          redirect: 'follow'
-        });
-        const result = await res.json();
-        if (result.status === 'ok') {
-          _authUser = { ..._authUser, token: result.token };
-          localStorage.setItem('kedaiHeula_auth', JSON.stringify(_authUser));
-          showToast('✅ Sesi dipulihkan - perangkat lain telah dikeluarkan');
-          startSessionCheck();
-        } else {
-          showToast('❌ Password salah');
-        }
-      } catch(e) { showToast('❌ Gagal: ' + e.message); }
-    }
+    icon: '🚪', title: 'Keluar?',
+    message: 'Kamu akan keluar dari akun ini.',
+    labelOk: 'Ya, Keluar',
+    onOk: () => forceLogout()
   });
 }
 
-function logoutSekarang() {
-  clearInterval(_kickCountdownTimer);
-  _kickCountdownTimer = null;
-  tutupKickBanner();
-  doLogoutClick();
-}
-
 function forceLogout(msg) {
-  clearInterval(_kickCountdownTimer);
-  _kickCountdownTimer = null;
-  tutupKickBanner();
+  stopRealtimeListeners();
   _authUser = null;
   localStorage.removeItem('kedaiHeula_auth');
-  const ls = document.getElementById('login-screen');
-  ls.classList.remove('hidden');
-  ls.style.display = 'flex';
-  ls.style.alignItems = 'center';
-  ls.style.justifyContent = 'center';
-  const appWrap = document.getElementById('app-wrapper');
-  if (appWrap) appWrap.style.display = 'none';
-  document.body.classList.remove('role-admin', 'role-kasir');
-  showLoginError(msg || 'Sesi berakhir, silakan login kembali.');
-}
 
-// -- Logout -----------------------------------------------------------------
-async function doLogoutClick() {
-  tutupMenuUser();
-  if (!_authUser) return;
-  try {
-    const url = getSheetsUrl();
-    if (url) {
-      await fetch(url, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'logout', userId: _authUser.userId, token: _authUser.token }),
-        redirect: 'follow'
-      });
-    }
-  } catch(e) {}
-  clearInterval(_sessionCheckTimer);
-  _authUser = null;
-  localStorage.removeItem('kedaiHeula_auth');
   const ls = document.getElementById('login-screen');
-  ls.classList.remove('hidden');
   ls.style.display = 'flex';
+  ls.style.flexDirection = 'column';
   ls.style.alignItems = 'center';
   ls.style.justifyContent = 'center';
-  const appWrap = document.getElementById('app-wrapper');
-  if (appWrap) appWrap.style.display = 'none';
-  document.body.classList.remove('role-admin', 'role-kasir');
+  ls.classList.remove('hidden');
+
+  const appWrapper = document.getElementById('app-wrapper');
+  if (appWrapper) appWrapper.style.display = 'none';
+
   document.getElementById('login-id').value = '';
   document.getElementById('login-pass').value = '';
   document.getElementById('login-error').style.display = 'none';
-  showToast('✅ Berhasil keluar');
+  document.body.classList.remove('role-admin', 'role-kasir');
+
+  tutupMenuUser();
+  tutupKickBanner();
+
+  if (msg) showLoginError(msg);
 }
 
-function bukaMenuUser() {
-  if (!_authUser) return;
-  const menu = document.getElementById('modal-user-menu');
-  if (menu.style.display === 'block') {
-    menu.style.display = 'none';
-    return;
-  }
-  document.getElementById('user-menu-title').textContent = _authUser.username;
-  const roleEl = document.getElementById('user-menu-role');
-  if (roleEl) roleEl.textContent = _authUser.role === 'admin' ? '⚙️ Administrator' : '💰 Kasir';
-  menu.style.display = 'block';
-}
-function tutupMenuUser() {
-  const menu = document.getElementById('modal-user-menu');
-  if (menu) menu.style.display = 'none';
-}
-// Close dropdown saat klik di luar
-document.addEventListener('click', function(e) {
-  const menu = document.getElementById('modal-user-menu');
-  const badge = document.getElementById('user-badge');
-  if (menu && badge && !menu.contains(e.target) && !badge.contains(e.target)) {
-    menu.style.display = 'none';
-  }
-});
-
-// -- Kelola Akun ------------------------------------------------------------
+// -- Kelola Akun
 async function muatDaftarAkun() {
-  const url = getSheetsUrl();
-  if (!url || !_authUser) return;
   const container = document.getElementById('daftar-akun-list');
   container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">⏳ Memuat...</div>';
   try {
-    const res = await fetch(authFetchUrl(url + '?action=getUsers'), { redirect: 'follow' });
-    const result = await res.json();
-    if (result.status === 'ok' && Array.isArray(result.data)) {
-      if (result.data.length === 0) {
-        container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Belum ada akun</div>';
-        return;
-      }
-      container.innerHTML = result.data.map(u => `
-        <div class="akun-row">
-          <div class="ar-info">
-            <div class="ar-id">${u.username} <span class="role-badge ${u.role}">${u.role}</span></div>
-            <div class="ar-role">ID: ${u.userId} · Dibuat: ${u.createdAt ? u.createdAt.split('T')[0] : '-'}</div>
-          </div>
-          ${u.userId !== 'admin' ? `<button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;color:var(--red);border-color:var(--red);" onclick="hapusAkun('${u.userId}','${u.username}')">🗑️ Hapus</button>` : '<span style="font-size:11px;color:var(--muted);">Admin utama</span>'}
+    const snap = await _fbGet(_fbRef('users'));
+    if (!snap.exists()) { container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">Belum ada akun</div>'; return; }
+    const users = snap.val();
+    container.innerHTML = Object.values(users).map(u => `
+      <div class="akun-row">
+        <div class="ar-info">
+          <div class="ar-id">${u.username} <span class="role-badge ${u.role}">${u.role}</span></div>
+          <div class="ar-role">ID: ${u.userId} · Dibuat: ${u.createdAt ? u.createdAt.split('T')[0] : '-'}</div>
         </div>
-      `).join('');
-    } else if (result.status === 'unauthorized') {
-      forceLogout(); 
-    }
-  } catch(e) { container.innerHTML = '<div style="color:var(--red);padding:10px;font-size:13px;">❌ Gagal memuat: ' + e.message + '</div>'; }
+        ${u.userId !== 'admin' ? `<button class="btn btn-danger" style="font-size:12px;padding:6px 12px;" onclick="hapusAkun('${u.userId}','${u.username}')">🗑️ Hapus</button>` : '<span style="font-size:11px;color:var(--muted);">Admin utama</span>'}
+      </div>
+    `).join('');
+  } catch(e) { container.innerHTML = '<div style="color:var(--red);padding:16px;">❌ Gagal memuat: ' + e.message + '</div>'; }
 }
 
 async function tambahAkun() {
-  const userId   = document.getElementById('new-user-id').value.trim();
+  const userId   = document.getElementById('new-user-id').value.trim().toLowerCase();
   const username = document.getElementById('new-user-nama').value.trim();
   const password = document.getElementById('new-user-pass').value;
   const role     = document.getElementById('new-user-role').value;
 
   if (!userId || !username || !password) { showToast('⚠️ Lengkapi semua field'); return; }
   if (password.length < 6) { showToast('⚠️ Password minimal 6 karakter'); return; }
-  if (!/^[a-zA-Z0-9_]+$/.test(userId)) { showToast('⚠️ ID hanya boleh huruf, angka, dan underscore'); return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(userId)) { showToast('⚠️ ID hanya huruf, angka, underscore'); return; }
 
-  const url = getSheetsUrl();
   try {
-    const res = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(authPostBody({ action: 'createUser', newUserId: userId, username, password, role })),
-      redirect: 'follow'
+    // Cek apakah userId sudah ada
+    const snap = await _fbGet(_fbRef(`users/${userId}`));
+    if (snap.exists()) { showToast('❌ ID pengguna sudah digunakan'); return; }
+
+    const hash = await sha256(password);
+    await _fbSet(_fbRef(`users/${userId}`), {
+      userId, username, role,
+      passwordHash: hash,
+      createdAt: new Date().toISOString(),
+      currentToken: null
     });
-    const result = await res.json();
-    if (result.status === 'ok') {
-      showToast('✅ Akun berhasil dibuat!');
-      document.getElementById('new-user-id').value = '';
-      document.getElementById('new-user-nama').value = '';
-      document.getElementById('new-user-pass').value = '';
-      muatDaftarAkun();
-    } else if (result.status === 'unauthorized') {
-      forceLogout();
-    } else {
-      showToast('❌ ' + (result.message || 'Gagal membuat akun'));
-    }
+
+    showToast('✅ Akun berhasil dibuat!');
+    document.getElementById('new-user-id').value = '';
+    document.getElementById('new-user-nama').value = '';
+    document.getElementById('new-user-pass').value = '';
+    muatDaftarAkun();
   } catch(e) { showToast('❌ Error: ' + e.message); }
 }
 
 async function hapusAkun(userId, username) {
   showKonfirmasi({
     icon: '🗑️', title: 'Hapus Akun?',
-    message: `Akun "${username}" (ID: ${userId}) akan dihapus permanen dan langsung logout dari semua device.`,
+    message: `Akun "${username}" (ID: ${userId}) akan dihapus permanen.`,
     labelOk: 'Ya, Hapus',
     onOk: async () => {
-      const url = getSheetsUrl();
       try {
-        const res = await fetch(url, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(authPostBody({ action: 'deleteUser', targetUserId: userId })),
-          redirect: 'follow'
-        });
-        const result = await res.json();
-        if (result.status === 'ok') { showToast('✅ Akun dihapus'); muatDaftarAkun(); }
-        else showToast('❌ ' + (result.message || 'Gagal'));
+        await _fbRemove(_fbRef(`users/${userId}`));
+        showToast('✅ Akun dihapus');
+        muatDaftarAkun();
       } catch(e) { showToast('❌ Error: ' + e.message); }
     }
   });
 }
 
-function bukaGantiPassword() {
-  document.getElementById('ganti-pass-lama').value = '';
-  document.getElementById('ganti-pass-baru').value = '';
-  document.getElementById('ganti-pass-konfirm').value = '';
-  document.getElementById('modal-ganti-pass').style.display = 'flex';
-}
-function tutupGantiPassword() { document.getElementById('modal-ganti-pass').style.display = 'none'; }
-
 async function simpanGantiPassword() {
-  const lama    = document.getElementById('ganti-pass-lama').value;
-  const baru    = document.getElementById('ganti-pass-baru').value;
+  const lama   = document.getElementById('ganti-pass-lama').value;
+  const baru   = document.getElementById('ganti-pass-baru').value;
   const konfirm = document.getElementById('ganti-pass-konfirm').value;
   if (!lama || !baru) { showToast('⚠️ Isi semua field'); return; }
   if (baru.length < 6) { showToast('⚠️ Password baru minimal 6 karakter'); return; }
-  if (baru !== konfirm) { showToast('⚠️ Konfirmasi password tidak cocok'); return; }
-
-  const url = getSheetsUrl();
+  if (baru !== konfirm) { showToast('⚠️ Konfirmasi tidak cocok'); return; }
   try {
-    const res = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(authPostBody({ action: 'changePassword', oldPassword: lama, newPassword: baru })),
-      redirect: 'follow'
-    });
-    const result = await res.json();
-    if (result.status === 'ok') { tutupGantiPassword(); showToast('✅ Password berhasil diubah!'); }
-    else showToast('❌ ' + (result.message || 'Gagal'));
+    const snap = await _fbGet(_fbRef(`users/${_authUser.userId}`));
+    const userData = snap.val();
+    const lamaHash = await sha256(lama);
+    if (lamaHash !== userData.passwordHash) { showToast('❌ Password lama salah'); return; }
+    const baruHash = await sha256(baru);
+    await _fbUpdate(_fbRef(`users/${_authUser.userId}`), { passwordHash: baruHash });
+    tutupGantiPassword();
+    showToast('✅ Password berhasil diubah!');
   } catch(e) { showToast('❌ Error: ' + e.message); }
 }
+
+// =====================
+// FIREBASE DATA OPS
+// =====================
+
+// Simpan menu ke Firebase (realtime push ke semua device)
+async function fbSaveMenu(menuArr) {
+  try {
+    const obj = {};
+    menuArr.forEach(item => { obj[item.id] = item; });
+    await _fbSet(_fbRef('kedai_data/menu'), obj.length === 0 ? null : obj);
+  } catch(e) { console.warn('fbSaveMenu error:', e); }
+}
+
+async function fbDeleteMenu(menuId) {
+  try {
+    await _fbRemove(_fbRef(`kedai_data/menu/${menuId}`));
+  } catch(e) { console.warn('fbDeleteMenu error:', e); }
+}
+
+async function fbSavePromos(promosArr) {
+  try {
+    const obj = {};
+    promosArr.forEach(p => { if (p.id) obj[p.id] = p; });
+    await _fbSet(_fbRef('kedai_data/promos'), Object.keys(obj).length === 0 ? null : obj);
+  } catch(e) { console.warn('fbSavePromos error:', e); }
+}
+
+async function fbSaveTransaksi(trxArr) {
+  try {
+    const obj = {};
+    trxArr.forEach(t => { obj[t.id] = t; });
+    await _fbSet(_fbRef('kedai_data/transaksi'), Object.keys(obj).length === 0 ? null : obj);
+  } catch(e) { console.warn('fbSaveTransaksi error:', e); }
+}
+
+async function fbAddTransaksi(trx) {
+  try {
+    await _fbSet(_fbRef(`kedai_data/transaksi/${trx.id}`), trx);
+  } catch(e) { console.warn('fbAddTransaksi error:', e); }
+}
+
+// Compat stubs - fungsi lama yang dipanggil dari core, kita redirect ke Firebase
+function autoSyncPush(type = 'menu') {
+  if (type === 'menu') {
+    fbSaveMenu(menuList);
+  } else if (type === 'promo') {
+    const promos = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+    fbSavePromos(promos);
+  } else if (type === 'transaksi') {
+    const allKeys = Object.keys(localStorage).filter(k => k.startsWith('kedaiHeula_pos_'));
+    let allTrx = [];
+    allKeys.forEach(k => {
+      try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {}
+    });
+    const laporan = JSON.parse(localStorage.getItem('kedaiHeula_transaksi') || '[]');
+    const allMerged = [...allTrx, ...laporan];
+    const dedupMap = {};
+    allMerged.forEach(t => { if (t.id) dedupMap[t.id] = t; });
+    fbSaveTransaksi(Object.values(dedupMap));
+  }
+}
+
+function syncPromosToCloud() {
+  const promos = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+  fbSavePromos(promos);
+}
+
+function updateSyncStatus() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.textContent = '🔴 Firebase Realtime';
+  el.style.color = 'var(--green)';
+  const dot = el.previousElementSibling;
+  if (dot && dot.textContent === '🔴') {
+    dot.textContent = '🟢';
+  }
+}
+
+// stubs yang tidak lagi diperlukan tapi mungkin dipanggil dari HTML
+function getSheetsUrl() { return 'firebase'; }
+function bukaSyncConfig() { showToast('ℹ️ Menggunakan Firebase Realtime Database'); }
+function tutupSyncConfig() {}
+async function simpanSyncConfig() {}
+async function syncKeSheets() { showToast('ℹ️ Data otomatis tersimpan ke Firebase'); }
+async function restoreFromSheets() {
+  showToast('⏳ Memuat ulang dari Firebase...');
+  // Data sudah auto-sync via listener, cukup trigger render
+  renderRingkasan();
+  renderPOSGrid();
+  renderPOSBundling();
+}
+async function autoSyncOnLoad() {
+  // Tidak perlu, Firebase listeners sudah handle
+}
+async function syncManual() {
+  showToast('⏳ Menyinkronkan...');
+  // Trigger fresh read dari Firebase
+  try {
+    const [menuSnap, promoSnap, trxSnap] = await Promise.all([
+      _fbGet(_fbRef('kedai_data/menu')),
+      _fbGet(_fbRef('kedai_data/promos')),
+      _fbGet(_fbRef('kedai_data/transaksi'))
+    ]);
+    if (menuSnap.val()) {
+      menuList = Object.values(menuSnap.val());
+      localStorage.setItem('kedaiHeula_menu', JSON.stringify(menuList));
+      renderRingkasan(); renderPOSGrid();
+    }
+    if (promoSnap.val()) {
+      const arr = Object.values(promoSnap.val());
+      localStorage.setItem('kedaiHeula_promos', JSON.stringify(arr));
+      if (typeof renderPromoList === 'function') renderPromoList();
+      refreshPromoDropdown(); renderPOSBundling();
+    }
+    showToast('✅ Data tersinkronisasi!');
+  } catch(e) { showToast('❌ Gagal sync: ' + e.message); }
+}
+async function bersihkanDuplikat() {
+  const bersih = dedupMenu(menuList);
+  menuList = bersih;
+  localStorage.setItem('kedaiHeula_menu', JSON.stringify(bersih));
+  await fbSaveMenu(bersih);
+  renderRingkasan();
+  showToast('✅ Duplikat dibersihkan! ' + bersih.length + ' menu tersisa.');
+}
+async function pullPromosFromCloud() {
+  const snap = await _fbGet(_fbRef('kedai_data/promos'));
+  if (snap.val()) {
+    const arr = Object.values(snap.val());
+    localStorage.setItem('kedaiHeula_promos', JSON.stringify(arr));
+    if (typeof renderPromoList === 'function') renderPromoList();
+    refreshPromoDropdown(); renderPOSBundling();
+  }
+}
+async function pullTrxFromCloud() {
+  const snap = await _fbGet(_fbRef('kedai_data/transaksi'));
+  if (snap.val()) {
+    const arr = Object.values(snap.val());
+    localStorage.setItem('kedaiHeula_transaksi', JSON.stringify(arr));
+    updatePOSSummary();
+  }
+}
+function syncTransaksiKeSheets() {
+  autoSyncPush('transaksi');
+}
+async function restoreTransaksiFromSheets() {
+  await pullTrxFromCloud();
+}
+async function restorePromosFromCloud() {
+  await pullPromosFromCloud();
+}
+function debugLog(msg, isErr) {
+  if (isErr) console.error(msg); else console.log(msg);
+}
+function simpanLoginUrl() { showToast('ℹ️ Firebase tidak perlu URL manual'); }
+function bukaLoginSetupUrl() { showToast('ℹ️ Menggunakan Firebase Realtime Database'); }
+
+
 
 // =====================
 // STATE
@@ -3078,12 +3120,13 @@ let lastNama = '';
 // INIT
 // =====================
 // Ensure all functions are defined before DOM ready
+
 window.onload = () => {
   try {
     tambahBahan(); tambahBahan(); tambahBahan();
     tambahBiaya();
 
-    // Migrasi data lama: pastikan semua menu punya id unik
+    // Migrasi data lama
     const existingMenu = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
     let needsMigration = false;
     existingMenu.forEach(item => {
@@ -3093,7 +3136,6 @@ window.onload = () => {
       }
     });
     if (needsMigration) {
-      localStorage.setItem('kedaiHeula_menu', JSON.stringify(existingMenu));
       menuList = existingMenu;
     }
 
@@ -3101,43 +3143,35 @@ window.onload = () => {
     tambahBundleItem();
     tambahBundleItem();
 
-    // Set URL default
-    const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdqBg7rvkD8ZdGRdAn-m-8-SG-b1j22zfZmGkjHUEjfN0RhNROT4KM5VkcA05e2T9t/exec';
-    if (!localStorage.getItem('kedaiHeula_sheetsUrl')) {
-      localStorage.setItem('kedaiHeula_sheetsUrl', DEFAULT_APPS_SCRIPT_URL);
-    }
+    // Init Firebase
+    initFirebase();
 
-    // Cek saved session - verify ke server dulu sebelum masuk
+    // Cek saved session
     const savedAuth = localStorage.getItem('kedaiHeula_auth');
     if (savedAuth) {
       try {
         const parsed = JSON.parse(savedAuth);
-        const url = localStorage.getItem('kedaiHeula_sheetsUrl');
-        if (url && parsed.userId && parsed.token) {
-          // Verify session ke server
-          const verifyUrl = url + '?action=ping&userId=' + encodeURIComponent(parsed.userId) + '&token=' + encodeURIComponent(parsed.token);
-          fetch(verifyUrl).then(r => r.json()).then(result => {
-            if (result.status === 'ok') {
+        if (parsed.userId && parsed.token) {
+          // Verifikasi token masih valid di Firebase
+          _fbGet(_fbRef(`users/${parsed.userId}/currentToken`)).then(snap => {
+            if (snap.val() === parsed.token) {
               _authUser = parsed;
               onLoginSuccess();
             } else {
-              // Session tidak valid - hapus dan tampilkan login
               localStorage.removeItem('kedaiHeula_auth');
             }
           }).catch(() => {
-            // Offline / server error - tetap masuk dengan saved session
+            // Offline - masuk dengan saved session
             _authUser = parsed;
             onLoginSuccess();
           });
         } else {
-          // Tidak ada URL atau data tidak lengkap - hapus saved auth, paksa login
           localStorage.removeItem('kedaiHeula_auth');
         }
       } catch(e) {
         localStorage.removeItem('kedaiHeula_auth');
       }
     }
-    // Kalau tidak ada saved session, login screen sudah visible by default
   } catch(e) {
     console.error('Init error:', e);
   }
@@ -3146,6 +3180,7 @@ window.onload = () => {
     document.getElementById('print-area').innerHTML = '';
   };
 };
+
 
 // =====================
 // TAB
@@ -6058,506 +6093,46 @@ function dedupMenu(arr) {
   return Object.values(map);
 }
 
-// -- Dipanggil saat app pertama kali dibuka ----------------------------------
-async function autoSyncOnLoad() {
-  const url = getSheetsUrl();
-  if (!url) return;
-
-  const statusEl = document.getElementById('sync-status');
-  if (statusEl) { statusEl.textContent = '🔄 Menyinkronkan data...'; statusEl.style.color = 'var(--orange)'; }
-
+// -- Helper: parse tanggal WIB string ke timestamp number -------------------
+function parseTanggal(str) {
+  if (!str) return 0;
+  // Format: "21/02/2026, 05.34" atau ISO string
   try {
-    // 1. Pull menu dari cloud
-    const resMenu = await fetch(authFetchUrl(url + '?action=restore'), { redirect: 'follow' });
-    if (resMenu.ok) {
-      const result = await resMenu.json();
-      if (result.status === 'ok' && Array.isArray(result.data)) {
-        const lokal = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-        // Gabungkan cloud + lokal, deduplikasi by id (timestamp terbaru menang)
-        const merged = dedupMenu([...result.data, ...lokal]);
-        localStorage.setItem('kedaiHeula_menu', JSON.stringify(merged));
-        menuList = merged;
-        renderRingkasan();
-        // Push hasil merged kembali ke cloud agar bersih
-        if (merged.length !== result.data.length) {
-          fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: merged })), redirect: 'follow' }).catch(() => {});
-        }
-      }
+    if (str.includes('/')) {
+      const [tgl, jam] = str.split(', ');
+      const [d, m, y] = tgl.split('/');
+      const [h, mn] = (jam || '00.00').split('.');
+      return new Date(`${y}-${m}-${d}T${h}:${mn}:00`).getTime();
     }
-
-    // 2. Pull promo dari cloud
-    const resPromo = await fetch(authFetchUrl(url + '?action=restore_promos'), { redirect: 'follow' });
-    if (resPromo.ok) {
-      const result = await resPromo.json();
-      if (result.status === 'ok' && Array.isArray(result.data)) {
-        const lokal = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
-        const cloudMap = {};
-        result.data.forEach(p => { if (p.id) cloudMap[p.id] = p; });
-        lokal.forEach(p => { if (p.id && !cloudMap[p.id]) cloudMap[p.id] = p; });
-        const merged = Object.values(cloudMap);
-        localStorage.setItem('kedaiHeula_promos', JSON.stringify(merged));
-        renderPromoList();
-        refreshPromoDropdown();
-      }
-    }
-
-    const now = getWIBDateTimeString();
-    localStorage.setItem('kedaiHeula_lastSync', now);
-    updateSyncStatus();
-
-  } catch(e) {
-    console.warn('Auto sync failed:', e.message);
-    updateSyncStatus();
-  }
+    return new Date(str).getTime() || 0;
+  } catch(e) { return 0; }
 }
 
-// -- Sync manual: pull cloud -> merge (timestamp wins) -> push merged ke cloud -
-async function syncManual() {
-  const url = getSheetsUrl();
-  if (!url) { bukaSyncConfig(); return; }
-
-  const statusEl = document.getElementById('sync-status');
-  if (statusEl) { statusEl.textContent = '🔄 Menyinkronkan...'; statusEl.style.color = 'var(--orange)'; }
-
-  try {
-    // STEP 1: Pull dari cloud dulu
-    const [resMenu, resPromo] = await Promise.all([
-      fetch(authFetchUrl(url + '?action=restore'), { redirect: 'follow' }),
-      fetch(authFetchUrl(url + '?action=restore_promos'), { redirect: 'follow' }),
-    ]);
-
-    // STEP 2: Merge menu -- timestamp terbaru menang, deduplikasi
-    let finalMenu = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-    if (resMenu.ok) {
-      const r = await resMenu.json();
-      if (r.status === 'ok' && Array.isArray(r.data)) {
-        finalMenu = dedupMenu([...r.data, ...finalMenu]);
-      }
+// -- Deduplikasi array menu: per id, ambil yang tanggal paling baru ----------
+function dedupMenu(arr) {
+  const map = {};
+  arr.forEach(item => {
+    if (!item.id) {
+      // Item lama tanpa id: pakai nama+hpp sebagai fallback key
+      item.id = 'menu_' + btoa(encodeURIComponent((item.nama || '') + '_' + (item.hpp || 0))).substring(0, 20);
     }
-
-    // STEP 3: Merge promo -- id unik, cloud + lokal
-    let finalPromo = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
-    if (resPromo.ok) {
-      const r = await resPromo.json();
-      if (r.status === 'ok' && Array.isArray(r.data)) {
-        const map = {};
-        r.data.forEach(p => { if (p.id) map[p.id] = p; });
-        finalPromo.forEach(p => { if (p.id && !map[p.id]) map[p.id] = p; });
-        finalPromo = Object.values(map);
-      }
-    }
-
-    // STEP 4: Simpan hasil merge ke lokal
-    localStorage.setItem('kedaiHeula_menu', JSON.stringify(finalMenu));
-    menuList = finalMenu;
-    localStorage.setItem('kedaiHeula_promos', JSON.stringify(finalPromo));
-
-    // STEP 5: Push hasil merged (bersih) ke cloud
-    const allKeys = Object.keys(localStorage).filter(k => k.startsWith('kedaiHeula_pos_'));
-    let allTrx = [];
-    allKeys.forEach(k => { try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {} });
-
-    await Promise.allSettled([
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup', data: finalMenu })), redirect: 'follow' }),
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'syncPromos', data: finalPromo })), redirect: 'follow' }),
-      allTrx.length > 0 && fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(authPostBody({ action: 'backup_transaksi_v2', data: allTrx })), redirect: 'follow' }),
-    ]);
-
-    // STEP 6: Update UI
-    renderRingkasan();
-    renderPromoList();
-    refreshPromoDropdown();
-    await pullTrxFromCloud();
-
-    const now = getWIBDateTimeString();
-    localStorage.setItem('kedaiHeula_lastSync', now);
-    updateSyncStatus();
-    showToast('✅ Sync selesai! Data sudah bersih.');
-  } catch(e) {
-    showToast('❌ Sync gagal: ' + e.message);
-    if (statusEl) { statusEl.textContent = '❌ Sync gagal'; statusEl.style.color = 'var(--red)'; }
-  }
-}
-// Bersihkan duplikat di localStorage dan sync ke cloud
-async function bersihkanDuplikat() {
-  showKonfirmasi({
-    icon: '🧹',
-    title: 'Bersihkan Duplikat?',
-    message: 'Data duplikat di lokal dan Google Sheets akan dihapus. Proses ini aman - hanya menghapus salinan ganda, data asli tetap ada.',
-    labelOk: 'Ya, Bersihkan',
-    onOk: async () => {
-      const url = getSheetsUrl();
-      const lokal = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-      const sebelum = lokal.length;
-      
-      // Deduplikasi lokal
-      const bersih = dedupMenu(lokal);
-      const sesudah = bersih.length;
-      
-      localStorage.setItem('kedaiHeula_menu', JSON.stringify(bersih));
-      menuList = bersih;
-      renderRingkasan();
-
-      // Push yang sudah bersih ke cloud
-      if (url) {
-        try {
-          showToast('🧹 Membersihkan... harap tunggu');
-          await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(authPostBody({ action: 'backup', data: bersih })),
-            redirect: 'follow'
-          });
-          const now = getWIBDateTimeString();
-          localStorage.setItem('kedaiHeula_lastSync', now);
-          updateSyncStatus();
-          showToast(`✅ Selesai! ${sebelum - sesudah} duplikat dihapus. Tersisa ${sesudah} menu.`);
-        } catch(e) {
-          showToast(`✅ Lokal bersih (${sebelum - sesudah} duplikat dihapus), tapi gagal update cloud: ` + e.message);
-        }
-      } else {
-        showToast(`✅ ${sebelum - sesudah} duplikat dihapus dari lokal. Setup cloud untuk sync.`);
+    const existing = map[item.id];
+    if (!existing) {
+      map[item.id] = item;
+    } else {
+      // Ambil yang lebih baru berdasarkan tanggal
+      if (parseTanggal(item.tanggal) > parseTanggal(existing.tanggal)) {
+        map[item.id] = item;
       }
     }
   });
+  return Object.values(map);
 }
 
-async function pullPromosFromCloud() {
-  const url = getSheetsUrl();
-  if (!url) return;
-  try {
-    const res = await fetch(authFetchUrl(url + '?action=restore_promos'), { redirect: 'follow' });
-    if (!res.ok) return;
-    const result = await res.json();
-    if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
-      const lokal = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
-      const map = {};
-      result.data.forEach(p => { if (p.id) map[p.id] = p; });
-      lokal.forEach(p => { if (p.id && !map[p.id]) map[p.id] = p; });
-      const merged = Object.values(map);
-      localStorage.setItem('kedaiHeula_promos', JSON.stringify(merged));
-      renderPromoList();
-      refreshPromoDropdown();
-      refreshAllBundleDropdowns();
-      refreshDropdownDiskon();
-      refreshDropdownBeliGratis();
-    }
-  } catch(e) { console.warn('Pull promo failed:', e.message); }
-}
-
-// Pull transaksi POS dari cloud (dipanggil saat buka tab POS)
-async function pullTrxFromCloud() {
-  const url = getSheetsUrl();
-  if (!url) return;
-  try {
-    const res = await fetch(url + '?action=restore_transaksi_v2', { redirect: 'follow' });
-    if (!res.ok) return;
-    const result = await res.json();
-    if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
-      // Simpan ke localStorage per tanggal
-      const byDate = {};
-      result.data.forEach(t => {
-        if (!t.timestamp) return;
-        const tgl = t.timestamp.split('T')[0];
-        if (!byDate[tgl]) byDate[tgl] = [];
-        byDate[tgl].push(t);
-      });
-
-      Object.entries(byDate).forEach(([tgl, trxList]) => {
-        const key = `kedaiHeula_pos_${tgl}`;
-        const lokal = JSON.parse(localStorage.getItem(key) || '[]');
-        const merged = [...lokal];
-        trxList.forEach(t => {
-          if (!merged.some(m => String(m.id) === String(t.id))) merged.push(t);
-        });
-        localStorage.setItem(key, JSON.stringify(merged));
-      });
-
-      // Update summary POS
-      updatePOSSummary();
-    }
-  } catch(e) { console.warn('Pull transaksi failed:', e.message); }
-}
-function autoSyncPush(type = 'menu') {
-  clearTimeout(_autoSyncTimer);
-  _autoSyncTimer = setTimeout(() => {
-    const url = getSheetsUrl();
-    if (!url) return;
-
-    if (type === 'menu') {
-      const data = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(authPostBody({ action: 'backup', data })),
-        redirect: 'follow'
-      }).then(r => r.json()).then(result => {
-        if (result.status === 'ok') {
-          const now = getWIBDateTimeString();
-          localStorage.setItem('kedaiHeula_lastSync', now);
-          updateSyncStatus();
-        }
-      }).catch(e => console.warn('Auto push menu failed:', e));
-
-    } else if (type === 'promo') {
-      syncPromosToCloud();
-
-    } else if (type === 'transaksi') {
-      // Kumpulkan semua transaksi POS
-      const allKeys = Object.keys(localStorage).filter(k => k.startsWith('kedaiHeula_pos_'));
-      let allTrx = [];
-      allKeys.forEach(k => {
-        try { allTrx = allTrx.concat(JSON.parse(localStorage.getItem(k) || '[]')); } catch(e) {}
-      });
-      if (allTrx.length === 0) return;
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(authPostBody({ action: 'backup_transaksi_v2', data: allTrx })),
-        redirect: 'follow'
-      }).catch(e => console.warn('Auto push transaksi failed:', e));
-    }
-  }, 2000); // Tunggu 2 detik setelah perubahan terakhir
-}
 
 // =====================
-// CLOUD SYNC (Google Sheets)
+// LAPORAN & TRANSAKSI
 // =====================
-
-function debugLog(msg, isError = false) {
-  const debugEl = document.getElementById('debug-log');
-  if (debugEl) {
-    debugEl.style.display = 'block';
-    const time = new Date().toLocaleTimeString('id-ID');
-    const color = isError ? '#F38BA8' : '#A6E3A1';
-    debugEl.innerHTML += `<div style="color:${color};margin-bottom:4px;">[${time}] ${msg}</div>`;
-    debugEl.scrollTop = debugEl.scrollHeight;
-  }
-}
-
-function getSheetsUrl() {
-  return localStorage.getItem('kedaiHeula_sheetsUrl') || '';
-}
-
-function updateSyncStatus() {
-  const url = getSheetsUrl();
-  const lastSync = localStorage.getItem('kedaiHeula_lastSync');
-  const el = document.getElementById('sync-status');
-  if (!el) return;
-  if (!url) {
-    el.textContent = 'Belum dikonfigurasi - klik Setup untuk mulai';
-    el.style.color = 'var(--muted)';
-  } else if (lastSync) {
-    el.textContent = '✅ Terakhir sync: ' + lastSync;
-    el.style.color = 'var(--green)';
-  } else {
-    el.textContent = '⚠️ URL tersimpan, belum pernah sync';
-    el.style.color = 'var(--orange)';
-  }
-}
-
-function bukaSyncConfig() {
-  const url = getSheetsUrl();
-  const input = document.getElementById('sheets-url-input');
-  // Pre-fill dengan URL yang tersimpan, atau URL default jika belum ada
-  if (url) {
-    input.value = url;
-  }
-  
-  // Clear debug log
-  const debugEl = document.getElementById('debug-log');
-  if (debugEl) {
-    debugEl.innerHTML = '';
-    debugEl.style.display = 'none';
-  }
-  
-  document.getElementById('modal-sync').style.display = 'flex';
-}
-
-function tutupSyncConfig() {
-  document.getElementById('modal-sync').style.display = 'none';
-}
-
-async function simpanSyncConfig() {
-  const url = document.getElementById('sheets-url-input').value.trim();
-  if (!url || !url.startsWith('https://script.google.com')) {
-    showToast('⚠️ URL tidak valid');
-    return;
-  }
-  localStorage.setItem('kedaiHeula_sheetsUrl', url);
-  tutupSyncConfig();
-  showToast('✅ URL tersimpan! Mencoba koneksi...');
-  await syncKeSheets(true);
-}
-
-async function syncKeSheets(isTest = false) {
-  const url = getSheetsUrl();
-  if (!url) {
-    bukaSyncConfig();
-    return;
-  }
-  const data = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-  if (!isTest && data.length === 0) {
-    showToast('⚠️ Tidak ada data untuk di-backup');
-    return;
-  }
-
-  const btnSync = document.getElementById('btn-sync');
-  const origText = btnSync.innerHTML;
-  btnSync.innerHTML = '⏳ Menyimpan...';
-  btnSync.disabled = true;
-
-  try {
-    debugLog('🔄 Mulai backup...');
-    debugLog('📍 URL: ' + url.substring(0, 50) + '...');
-    debugLog('📦 Data: ' + data.length + ' menu');
-    
-    // Log ukuran foto untuk debug
-    data.forEach((item, i) => {
-      if (item.foto) {
-        const sizeKB = Math.round(item.foto.length / 1024);
-        debugLog(`📸 ${item.nama}: foto ${sizeKB}KB`);
-      }
-    });
-    
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(authPostBody({ action: 'backup', data: data })),
-      redirect: 'follow'
-    });
-    
-    debugLog('📡 Response status: ' + res.status);
-    
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    }
-    
-    const result = await res.json();
-    debugLog('✅ Response: ' + JSON.stringify(result).substring(0, 100));
-    
-    if (result.status === 'ok') {
-      const now = getWIBDateTimeString();
-      localStorage.setItem('kedaiHeula_lastSync', now);
-      updateSyncStatus();
-      debugLog('✅ Backup berhasil!');
-      showToast(isTest ? '✅ Koneksi berhasil! Data tersimpan.' : `✅ Backup berhasil! ${data.length} menu tersimpan.`);
-    } else {
-      throw new Error(result.message || 'Unknown error');
-    }
-  } catch (e) {
-    debugLog('❌ ERROR: ' + e.message, true);
-    
-    let errorMsg = 'Gagal backup';
-    
-    if (e.message.includes('Failed to fetch')) {
-      errorMsg += ': Cek URL atau deploy ulang Apps Script';
-      debugLog('💡 TIP: Buka Setup -> cek URL sudah benar', true);
-    } else if (e.message.includes('HTTP 404')) {
-      errorMsg += ': URL tidak ditemukan';
-      debugLog('💡 TIP: Deploy ulang Apps Script -> copy URL baru', true);
-    } else if (e.message.includes('HTTP 403')) {
-      errorMsg += ': Permission ditolak';
-      debugLog('💡 TIP: Set "Who has access" = Anyone di Apps Script', true);
-    } else {
-      errorMsg += ': ' + e.message;
-    }
-    
-    showToast('❌ ' + errorMsg);
-  } finally {
-    btnSync.innerHTML = origText;
-    btnSync.disabled = false;
-  }
-}
-
-async function restoreFromSheets() {
-  const url = getSheetsUrl();
-  if (!url) {
-    bukaSyncConfig();
-    return;
-  }
-  
-  const lokal = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-  const lokalCount = lokal.length;
-  
-  let confirmMsg = 'Restore data dari Google Sheets?';
-  if (lokalCount > 0) {
-    confirmMsg += `\n\nData lokal: ${lokalCount} menu.\nData akan digabung (tidak dihapus).`;
-  } else {
-    confirmMsg += '\n\nData lokal kosong, akan diisi dari cloud.';
-  }
-  
-  showKonfirmasi({
-    icon: '☁️',
-    title: 'Restore dari Cloud?',
-    message: lokalCount > 0
-      ? `Data lokal: ${lokalCount} menu. Data cloud akan digabung (tidak menghapus data lokal).`
-      : 'Data lokal kosong. Data akan diisi dari cloud.',
-    labelOk: 'Ya, Restore',
-    onOk: async () => {
-
-  const btnRestore = document.getElementById('btn-restore');
-  const origText = btnRestore.innerHTML;
-  btnRestore.innerHTML = '⏳ Memuat...';
-  btnRestore.disabled = true;
-
-  try {
-    // CRITICAL: tambahkan ?action=restore ke URL untuk GET request
-    const fetchUrl = url.includes('?') ? url + '&action=restore' : url + '?action=restore';
-    const res = await fetch(fetchUrl, { 
-      method: 'GET',
-      redirect: 'follow'
-    });
-    
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    }
-    
-    const result = await res.json();
-    
-    if (result.status === 'ok' && Array.isArray(result.data)) {
-      const cloud = result.data;
-      
-      if (cloud.length === 0) {
-        showToast('⚠️ Tidak ada data di Google Sheets. Backup dulu sebelum restore.');
-        return;
-      }
-      
-      // Merge berdasarkan id (bukan nama+tanggal)
-      const cloudMap = {};
-      cloud.forEach(item => {
-        if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
-        cloudMap[item.id] = item;
-      });
-      lokal.forEach(item => {
-        if (!item.id) item.id = 'menu_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
-        if (!cloudMap[item.id]) cloudMap[item.id] = item;
-      });
-      const merged = Object.values(cloudMap);
-      const added = merged.length - cloud.length;
-      
-      localStorage.setItem('kedaiHeula_menu', JSON.stringify(merged));
-      menuList = merged;
-      renderRingkasan();
-      
-      showToast(`✅ Restore berhasil! ${cloud.length} menu dari cloud, ${added > 0 ? added + ' menu lokal ditambahkan. ' : ''}Total: ${merged.length} menu.`);
-    } else {
-      throw new Error(result.message || 'Data tidak valid dari server');
-    }
-  } catch (e) {
-    showToast('❌ Gagal restore: ' + e.message);
-    console.error('Restore error:', e);
-  } finally {
-    btnRestore.innerHTML = origText;
-    btnRestore.disabled = false;
-  }
-  } // end onOk
-  }); // end showKonfirmasi
-}
-
-// =====================
-
-
 function initLaporan() {
   // Set tanggal hari ini (WIB)
   document.getElementById('transaksi-tanggal').value = getWIBDateString();
@@ -7348,6 +6923,8 @@ function exportLaporanPDF() {
 }
 
 // Init: sudah digabung di window.onload di atas
+
+
 </script>
 </div><!-- end app-wrapper -->
 </body>
