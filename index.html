@@ -1263,10 +1263,7 @@
 
     <!-- Footer -->
     <div style="padding:12px 24px 18px;border-top:2px solid #FFE4CC;text-align:center;">
-      <button onclick="bukaLoginSetupUrl()"
-        style="display:block;width:100%;margin-bottom:12px;padding:8px;border-radius:10px;border:2px dashed #FFE4CC;background:transparent;color:#F47C20;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;">
-        ⚙️ Setup / Ganti URL Apps Script
-      </button>
+      
       <div style="font-size:11px;color:#888;font-weight:600;line-height:1.7;">
         Developed by <a href="https://github.com/0xduraku" target="_blank" style="color:#F47C20;text-decoration:none;font-weight:700;">0xduraku</a>
         &nbsp;·&nbsp; © 2025 Kedai Heula<br>
@@ -1564,17 +1561,7 @@
     <div class="section-sub">Semua menu yang sudah dihitung HPP-nya ada di sini.</div>
 
     <!-- CLOUD SYNC BAR -->
-    <div id="sync-bar" style="background:#FFFAF5;border:2px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:160px;">
-        <div style="font-size:13px;font-weight:800;color:var(--dark);">🔥 Firebase Realtime Database</div>
-        <div id="sync-status" style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px;">Menyinkronkan...</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="bukaSyncConfig()">⚙️ Setup URL</button>
-        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="syncManual()">🔄 Sync Sekarang</button>
-        <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;background:#FFF0F0;color:var(--red);border-color:var(--red);" onclick="bersihkanDuplikat()">🧹 Bersihkan Duplikat</button>
-      </div>
-    </div>
+    
 
     <div id="ringkasan-list">
       <div class="empty-state">
@@ -1589,7 +1576,7 @@
   <div class="modal-overlay" id="modal-sync" onclick="if(event.target===this)tutupSyncConfig()">
     <div class="modal-box" style="max-width:520px;">
       <div class="modal-header">
-        <div class="modal-title">⚙️ Setup Cloud Backup</div>
+        
         <button class="modal-close" onclick="tutupSyncConfig()">✕</button>
       </div>
       <div class="modal-body">
@@ -1632,12 +1619,8 @@
       <button class="btn btn-primary" onclick="exportLaporanPDF()" style="font-size:13px;padding:10px 16px;">
         📄 Export PDF
       </button>
-      <button class="btn btn-secondary" onclick="syncTransaksiKeSheets()" style="font-size:13px;padding:10px 16px;">
-        ⬆️ Backup Transaksi
-      </button>
-      <button class="btn btn-secondary" onclick="restoreTransaksiFromSheets()" style="font-size:13px;padding:10px 16px;">
-        ⬇️ Restore Transaksi
-      </button>
+      
+      
     </div>
 
     <!-- PERIOD SELECTOR -->
@@ -3182,6 +3165,37 @@ window.onload = () => {
 };
 
 
+
+
+// =====================
+// USER MENU DROPDOWN
+// =====================
+function bukaMenuUser() {
+  if (!_authUser) return;
+  const menu = document.getElementById('modal-user-menu');
+  if (menu.style.display === 'block') {
+    menu.style.display = 'none';
+    return;
+  }
+  document.getElementById('user-menu-title').textContent = _authUser.username;
+  const roleEl = document.getElementById('user-menu-role');
+  if (roleEl) roleEl.textContent = _authUser.role === 'admin' ? '⚙️ Administrator' : '💰 Kasir';
+  menu.style.display = 'block';
+}
+
+function tutupMenuUser() {
+  const menu = document.getElementById('modal-user-menu');
+  if (menu) menu.style.display = 'none';
+}
+
+// Close dropdown saat klik di luar
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('modal-user-menu');
+  const badge = document.getElementById('user-badge');
+  if (menu && badge && !menu.contains(e.target) && !badge.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
 
 // =====================
 // ON LOGIN SUCCESS
