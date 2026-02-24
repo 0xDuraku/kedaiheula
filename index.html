@@ -3182,6 +3182,55 @@ window.onload = () => {
 };
 
 
+
+// =====================
+// ON LOGIN SUCCESS
+// =====================
+function onLoginSuccess() {
+  // Sembunyikan login screen, tampilkan app
+  const loginScreen = document.getElementById('login-screen');
+  loginScreen.style.display = 'none';
+  loginScreen.classList.add('hidden');
+  const appWrapper = document.getElementById('app-wrapper');
+  if (appWrapper) appWrapper.style.display = 'block';
+  document.getElementById('login-pass').value = '';
+
+  // Set role di body untuk CSS
+  document.body.classList.remove('role-admin', 'role-kasir');
+  document.body.classList.add('role-' + _authUser.role);
+
+  // Update user badge
+  document.getElementById('ub-name').textContent = _authUser.username;
+  document.getElementById('ub-role').textContent = _authUser.role === 'admin' ? '⚙️ Admin' : '💰 Kasir';
+
+  // Update halaman akun saya
+  const akunNama = document.getElementById('akun-saya-nama');
+  const akunId = document.getElementById('akun-saya-id');
+  if (akunNama) akunNama.textContent = _authUser.username;
+  if (akunId) akunId.textContent = _authUser.userId;
+
+  // Aktifkan realtime listeners Firebase
+  startRealtimeListeners();
+
+  // Aktifkan tab yang sesuai
+  if (_authUser.role === 'kasir') {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-pos').classList.add('active');
+    document.getElementById('tab-btn-pos').classList.add('active');
+    renderPOSGrid(); renderPOSBundling(); updatePOSSummary(); refreshPromoDropdown();
+  } else {
+    // Admin - tab default Hitung HPP
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-hitung').classList.add('active');
+    const hitungBtn = document.querySelector(".tab-icon[onclick*=\'hitung\']");
+    if (hitungBtn) hitungBtn.classList.add('active');
+    renderRingkasan();
+    muatDaftarAkun();
+  }
+}
+
 // =====================
 // TAB
 // =====================
