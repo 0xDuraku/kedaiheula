@@ -6622,10 +6622,13 @@ function renderLaporan() {
   const allTransaksi = JSON.parse(localStorage.getItem('kedaiHeula_transaksi') || '[]');
   const filtered = filterTransaksiByPeriode(allTransaksi);
 
-  // Summary
-  const totalProfit = filtered.reduce((s, t) => s + t.profit, 0);
-  const totalTransaksi = filtered.length;
-  const totalItem = filtered.reduce((s, t) => s + t.qty, 0);
+  // Summary - hitung transaksi = jumlah trxId unik (bukan jumlah rows)
+  const totalProfit = filtered.reduce((s, t) => s + (t.profit||0), 0);
+  const totalRevenue = filtered.reduce((s, t) => s + ((t.hargaJual||0)*(t.qty||0)), 0);
+  const totalItem   = filtered.reduce((s, t) => s + (t.qty||0), 0);
+  // Hitung transaksi unik per trxId
+  const uniqTrx = new Set(filtered.map(t => t.trxId ? String(t.trxId) : String(t.id)));
+  const totalTransaksi = uniqTrx.size;
 
   document.getElementById('lap-profit').textContent = formatRp(totalProfit);
   document.getElementById('lap-transaksi').textContent = totalTransaksi;
@@ -6802,66 +6805,124 @@ function renderTabelTransaksi(transaksiList) {
     return;
   }
 
+  // Group flat records by trxId → tampilkan per transaksi kasir
+  // Record tanpa trxId (input manual) = masing-masing 1 transaksi sendiri
+  const trxMap = {}; // trxId/id → { tanggal, items[], totalProfit, id_for_delete }
+  transaksiList.forEach(r => {
+    const key = r.trxId ? String(r.trxId) : String(r.id);
+    if (!trxMap[key]) {
+      trxMap[key] = {
+        tanggal: r.tanggal,
+        kasir: r.kasir || '-',
+        items: [],
+        totalProfit: 0,
+        totalHarga: 0,
+        deleteIds: [],   // semua id yang ikut dalam transaksi ini
+        trxId: key
+      };
+    }
+    trxMap[key].items.push(r);
+    trxMap[key].totalProfit += r.profit || 0;
+    trxMap[key].totalHarga  += (r.hargaJual || 0) * (r.qty || 0);
+    trxMap[key].deleteIds.push(r.id);
+  });
+
+  // Sort terbaru dulu
+  const grouped = Object.values(trxMap).sort((a, b) =>
+    new Date(b.tanggal) - new Date(a.tanggal) || Number(b.trxId) - Number(a.trxId)
+  );
+
   let html = `<table class="breakdown-table">
     <thead>
       <tr>
-        <th>Tanggal</th>
-        <th>Menu</th>
-        <th class="text-right">Qty</th>
-        <th class="text-right">HPP</th>
-        <th class="text-right">Harga Jual</th>
-        <th class="text-right">Profit</th>
-        <th></th>
+        <th style="width:90px">Tanggal</th>
+        <th>Item</th>
+        <th class="text-right" style="width:60px">Qty</th>
+        <th class="text-right" style="width:90px">Total</th>
+        <th class="text-right" style="width:90px">Profit</th>
+        <th style="width:40px"></th>
       </tr>
     </thead>
     <tbody>`;
 
-  transaksiList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).forEach(t => {
-    const displayDate = parseWIBDate(t.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
-    html += `<tr>
-      <td>${displayDate}</td>
-      <td>${t.menu}</td>
-      <td class="text-right">${t.qty} pcs</td>
-      <td class="text-right">${formatRp(t.hpp)}</td>
-      <td class="text-right">${formatRp(t.hargaJual)}</td>
-      <td class="text-right" style="font-weight:800;color:var(--green);">${formatRp(t.profit)}</td>
-      <td><button class="btn-hapus-transaksi" data-id="${t.id}" title="Klik 2x untuk hapus" style="background:var(--red);color:white;border:none;border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;font-weight:700;">🗑️</button></td>
-    </tr>`;
+  grouped.forEach((trx, gi) => {
+    const displayDate = parseWIBDate(trx.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
+    const deleteIdsJson = JSON.stringify(trx.deleteIds);
+    const rowBg = gi % 2 === 0 ? '' : 'background:#FFFAF5;';
+
+    if (trx.items.length === 1) {
+      // Single item: tampilkan 1 baris biasa
+      const r = trx.items[0];
+      html += `<tr style="${rowBg}">
+        <td style="font-size:12px;">${displayDate}</td>
+        <td>${r.menu}<br><small style="color:var(--muted);font-size:10px;">${r.kasir || ''}</small></td>
+        <td class="text-right">${r.qty} pcs</td>
+        <td class="text-right" style="font-weight:700;">${formatRp((r.hargaJual||0)*(r.qty||0))}</td>
+        <td class="text-right" style="font-weight:800;color:var(--green);">${formatRp(r.profit)}</td>
+        <td><button class="btn-hapus-transaksi" data-ids='${deleteIdsJson}' title="Klik 2x hapus" style="background:var(--red);color:white;border:none;border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;font-weight:700;">🗑️</button></td>
+      </tr>`;
+    } else {
+      // Multi item: baris header transaksi + detail items
+      const itemNames = trx.items.map(r => `${r.qty}x ${r.menu}`).join(', ');
+      const totalQty  = trx.items.reduce((s, r) => s + (r.qty||0), 0);
+      html += `<tr style="${rowBg}">
+        <td style="font-size:12px;" rowspan="${trx.items.length + 1}">${displayDate}<br><small style="color:var(--muted);font-size:10px;">${trx.kasir || ''}</small></td>
+        <td colspan="2" style="font-size:11px;color:var(--muted);font-weight:700;padding-bottom:4px;">🧾 ${trx.items.length} item · ${totalQty} pcs</td>
+        <td class="text-right" style="font-weight:800;">${formatRp(trx.totalHarga)}</td>
+        <td class="text-right" style="font-weight:900;color:var(--green);">${formatRp(trx.totalProfit)}</td>
+        <td><button class="btn-hapus-transaksi" data-ids='${deleteIdsJson}' title="Klik 2x hapus semua" style="background:var(--red);color:white;border:none;border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;font-weight:700;">🗑️</button></td>
+      </tr>`;
+      trx.items.forEach(r => {
+        html += `<tr style="${rowBg}border-top:none;">
+          <td style="padding-left:16px;font-size:12px;color:var(--dark);">↳ ${r.menu}</td>
+          <td class="text-right" style="font-size:12px;">${r.qty} pcs</td>
+          <td class="text-right" style="font-size:12px;">${formatRp((r.hargaJual||0)*(r.qty||0))}</td>
+          <td class="text-right" style="font-size:12px;color:var(--green);">${formatRp(r.profit)}</td>
+          <td></td>
+        </tr>`;
+      });
+    }
   });
 
   html += '</tbody></table>';
   container.innerHTML = html;
 
-  // Attach event listeners dengan double-click protection
+  // Attach event listeners - double tap to delete
   container.querySelectorAll('.btn-hapus-transaksi').forEach(btn => {
     let clickCount = 0;
     let clickTimer = null;
     
     btn.addEventListener('click', function() {
-      const id = parseInt(this.getAttribute('data-id'));
+      // Support both data-ids (array) and data-id (single)
+      let idsToDelete = [];
+      try {
+        const idsAttr = this.getAttribute('data-ids');
+        if (idsAttr) idsToDelete = JSON.parse(idsAttr);
+        else {
+          const singleId = parseInt(this.getAttribute('data-id'));
+          if (!isNaN(singleId)) idsToDelete = [singleId];
+        }
+      } catch(e) {}
+      
       clickCount++;
       
       if (clickCount === 1) {
-        // First click - warning visual
         this.style.background = '#F39C12';
         this.textContent = '⚠️ Klik lagi';
-        
         clickTimer = setTimeout(() => {
-          // Reset after 2 seconds
           clickCount = 0;
           this.style.background = 'var(--red)';
           this.textContent = '🗑️';
         }, 2000);
         
       } else if (clickCount === 2) {
-        // Second click - delete
         clearTimeout(clickTimer);
         clickCount = 0;
         
         let list = JSON.parse(localStorage.getItem('kedaiHeula_transaksi') || '[]');
         const before = list.length;
         
-        list = list.filter(t => t.id !== id);
+        list = list.filter(t => !idsToDelete.includes(t.id));
         const after = list.length;
         
         if (before === after) {
