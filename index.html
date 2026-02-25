@@ -1185,7 +1185,45 @@
   .tab-admin-only { display: none; }
   body.role-admin .tab-admin-only { display: flex; }
   /* Kasir: sembunyikan seluruh tab nav */
-  body.role-kasir .tabs-wrapper { display: none !important; }
+  /* Kasir sidebar: hanya tampilkan POS */
+  body.role-kasir .tabs-wrapper {
+    display: flex !important;
+    width: 72px !important;
+    padding: 12px 8px !important;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  body.role-kasir .sidebar-section-label {
+    display: none !important;
+  }
+  /* Kasir: sembunyikan semua tab kecuali POS */
+  body.role-kasir .tab-icon:not(#tab-btn-pos) {
+    display: none !important;
+  }
+  /* POS button kasir - vertical compact */
+  body.role-kasir #tab-btn-pos {
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 10px 8px !important;
+    width: 56px !important;
+  }
+  body.role-kasir #tab-btn-pos .ti-label {
+    font-size: 10px !important;
+    text-align: center !important;
+  }
+  /* Mobile kasir: bottom bar biasa dengan 1 item */
+  @media (max-width: 768px) {
+    body.role-kasir .tabs-wrapper {
+      width: 100% !important;
+      height: auto !important;
+      flex-direction: row !important;
+      padding: 12px !important;
+    }
+    body.role-kasir #tab-btn-pos {
+      width: auto !important;
+      flex-direction: row !important;
+    }
+  }
   /* Modal kelola akun */
   .akun-row {
     display: flex; align-items: center; justify-content: space-between;
@@ -1201,6 +1239,68 @@
   .role-badge.admin { background: #FFF0EF; color: var(--red); }
   .role-badge.kasir { background: #E8F5E9; color: var(--green); }
 
+
+  /* ===== KELOLA AKUN RESPONSIF ===== */
+  #tab-akun .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (max-width: 520px) {
+    #tab-akun .form-row {
+      grid-template-columns: 1fr;
+    }
+    #tab-akun .card {
+      padding: 16px;
+    }
+  }
+
+  /* ===== POS RESPONSIF ===== */
+  #pos-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+  #pos-bundling-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+  @media (max-width: 480px) {
+    #pos-menu-grid, #pos-bundling-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+  }
+
+  /* ===== MAIN CONTENT MAX WIDTH UNTUK TABLET/PC ===== */
+  .main {
+    max-width: 1200px;
+  }
+
+  /* ===== KASIR: SIDEBAR MINIMALIS ===== */
+  body.role-kasir .tabs-wrapper {
+    width: 80px;
+  }
+  @media (max-width: 768px) {
+    body.role-kasir .tabs-wrapper {
+      width: 100%;
+    }
+  }
+  body.role-kasir .tab-icon#tab-btn-pos .ti-label {
+    display: block !important;
+  }
+
+  /* ===== SECTION HEADER RESPONSIVE ===== */
+  .section-header {
+    margin-bottom: 20px;
+  }
+
+  /* ===== LAPORAN TABLE RESPONSIVE ===== */
+  @media (max-width: 600px) {
+    .breakdown-table th:nth-child(4),
+    .breakdown-table td:nth-child(4) {
+      display: none; /* sembunyikan kolom HPP di mobile */
+    }
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -2311,7 +2411,7 @@
 </div>
 
 <!-- TAB KELOLA AKUN (admin only) -->
-<div id="tab-akun" class="tab-content">
+<div id="tab-akun" class="tab-content" style="max-width:680px;margin:0 auto;width:100%;">
   <div class="section-title">👥 Kelola Akun</div>
   <div class="section-sub">Tambah, hapus, dan kelola akun kasir</div>
 
@@ -2633,7 +2733,9 @@ function startRealtimeListeners() {
     if (typeof refreshPromoDropdown === 'function') refreshPromoDropdown();
     if (typeof refreshDropdownDiskon === 'function') refreshDropdownDiskon();
     if (typeof refreshAllBundleDropdowns === 'function') refreshAllBundleDropdowns();
+    // Selalu re-render POS bundling saat promo berubah (kasir langsung lihat)
     renderPOSBundling();
+    renderPOSGrid(); // refresh juga item satuan
   });
 
   // Listen transaksi changes
@@ -2644,7 +2746,9 @@ function startRealtimeListeners() {
     const arr = data ? Object.values(data) : [];
     localStorage.setItem('kedaiHeula_transaksi', JSON.stringify(arr));
     updatePOSSummary();
-    if (typeof renderLaporan === 'function' && document.getElementById('tab-laporan').classList.contains('active')) {
+    // Re-render laporan (realtime update saat kasir buat transaksi)
+    const tabLaporan = document.getElementById('tab-laporan');
+    if (tabLaporan && tabLaporan.classList.contains('active')) {
       renderLaporan();
     }
   });
@@ -3232,7 +3336,11 @@ function onLoginSuccess() {
     document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-pos').classList.add('active');
     document.getElementById('tab-btn-pos').classList.add('active');
-    renderPOSGrid(); renderPOSBundling(); updatePOSSummary(); refreshPromoDropdown();
+    // Render segera dari localStorage (jika ada cache)
+    renderPOSGrid(); updatePOSSummary();
+    // Render bundling setelah jeda kecil agar Firebase listener sempat push data
+    renderPOSBundling();
+    setTimeout(() => { renderPOSBundling(); refreshPromoDropdown(); }, 1500);
   } else {
     // Admin - tab default Hitung HPP
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -4277,7 +4385,7 @@ function renderPOSBundling() {
   if (!grid || !section) return;
   
   const promos = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
-  const today = new Date().toISOString().split('T')[0];
+  const today = getWIBDateString(); // Pakai WIB bukan UTC
   
   // Filter active bundling promos only
   const activeBundling = promos.filter(p => 
@@ -4564,67 +4672,70 @@ function hitungKembalianPOS() {
 
 function simpanTransaksiPOS() {
   const cartKeys = Object.keys(posCart);
-  
-  if (cartKeys.length === 0) {
-    showToast('⚠️ Keranjang kosong');
-    return;
-  }
-  
+  if (cartKeys.length === 0) { showToast('⚠️ Keranjang kosong'); return; }
+
   const subtotalText = document.getElementById('pos-subtotal').textContent;
   const subtotal = parseFloat(subtotalText.replace(/[^0-9]/g, '')) || 0;
   const bayar = parseFloat(document.getElementById('pos-bayar').value) || 0;
-  
-  if (bayar < subtotal) {
-    showToast('⚠️ Uang dibayar kurang!');
-    return;
-  }
-  
-  const data = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
-  const promos = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
-  const transaksi = {
-    id: Date.now(),
-    timestamp: new Date().toISOString(),
-    items: cartKeys.map(key => {
-      const qty = posCart[key];
-      const isBundling = key.toString().startsWith('b-');
-      if (isBundling) {
-        const promoId = key.slice(2);
-        const promo = promos.find(p => p.id == promoId);
-        if (!promo) return null;
-        return {
-          nama: '📦 ' + promo.nama,
-          kategori: 'bundling',
-          qty: qty,
-          hpp: 0,
-          harga: promo.harga || 0,
-          subtotal: (promo.harga || 0) * qty,
-          profit: (promo.harga || 0) * qty
-        };
-      } else {
-        const menu = data[parseInt(key)];
-        if (!menu) return null;
-        return {
-          nama: menu.nama,
-          kategori: menu.kategori,
-          qty: qty,
-          hpp: menu.hpp,
-          harga: menu.hargaJual,
-          subtotal: menu.hargaJual * qty,
-          profit: (menu.hargaJual - menu.hpp) * qty
-        };
-      }
-    }).filter(Boolean),
-    total: subtotal,
-    bayar: bayar,
-    kembalian: bayar - subtotal
-  };
-  
-  const today = new Date().toISOString().split('T')[0];
-  const key = `kedaiHeula_pos_${today}`;
-  const existing = JSON.parse(localStorage.getItem(key) || '[]');
-  existing.push(transaksi);
-  localStorage.setItem(key, JSON.stringify(existing));
-  
+  if (bayar < subtotal) { showToast('⚠️ Uang dibayar kurang!'); return; }
+
+  const menuData = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+  const promos   = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+  const now      = new Date();
+  const wibStr   = getWIBDateString(); // YYYY-MM-DD WIB
+  const trxId    = Date.now();
+
+  // Build items untuk nota (format POS)
+  const items = cartKeys.map(key => {
+    const qty = posCart[key];
+    const isBundling = key.toString().startsWith('b-');
+    if (isBundling) {
+      const promo = promos.find(p => p.id == key.slice(2));
+      if (!promo) return null;
+      return { nama: '📦 ' + promo.nama, kategori: 'bundling', qty, hpp: 0,
+               harga: promo.harga || 0, subtotal: (promo.harga || 0) * qty,
+               profit: (promo.harga || 0) * qty };
+    } else {
+      const menu = menuData[parseInt(key)];
+      if (!menu) return null;
+      return { nama: menu.nama, kategori: menu.kategori, qty,
+               hpp: menu.hpp, harga: menu.hargaJual,
+               subtotal: menu.hargaJual * qty,
+               profit: (menu.hargaJual - menu.hpp) * qty };
+    }
+  }).filter(Boolean);
+
+  const transaksi = { id: trxId, timestamp: now.toISOString(),
+                      items, total: subtotal, bayar, kembalian: bayar - subtotal };
+
+  // Simpan ke POS harian (untuk summary kasir)
+  const dayKey = `kedaiHeula_pos_${wibStr}`;
+  const dayList = JSON.parse(localStorage.getItem(dayKey) || '[]');
+  dayList.push(transaksi);
+  localStorage.setItem(dayKey, JSON.stringify(dayList));
+
+  // Flatten items → format Laporan (1 record per item, kompatibel dengan renderLaporan)
+  const laporanList = JSON.parse(localStorage.getItem('kedaiHeula_transaksi') || '[]');
+  items.forEach((item, i) => {
+    const record = {
+      id: trxId + i,             // unique per item
+      tanggal: wibStr,
+      menu: item.nama,
+      kategori: item.kategori || '-',
+      qty: item.qty,
+      hpp: item.hpp,
+      hargaJual: item.harga,
+      profit: item.profit,
+      trxId: trxId,              // group dengan transaksi yang sama
+      kasir: _authUser ? _authUser.username : 'Kasir'
+    };
+    laporanList.push(record);
+  });
+  localStorage.setItem('kedaiHeula_transaksi', JSON.stringify(laporanList));
+
+  // Push ke Firebase realtime → admin langsung lihat di Laporan
+  fbSaveTransaksi(laporanList);
+
   // Reset cart & UI
   posCart = {};
   document.getElementById('pos-bayar').value = '';
@@ -4632,12 +4743,8 @@ function simpanTransaksiPOS() {
   renderPOSBundling();
   updateCartSidebar();
   updatePOSSummary();
-
-  // Fix 3: Langsung update tab Laporan agar data masuk realtime
   renderLaporan();
-  autoSyncPush('transaksi'); // Auto push transaksi ke cloud
 
-  // Langsung tampilkan nota untuk print
   lihatNota(transaksi);
   showToast('✅ Transaksi berhasil!');
 }
