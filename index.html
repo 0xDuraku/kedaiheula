@@ -1301,6 +1301,74 @@
       display: none; /* sembunyikan kolom HPP di mobile */
     }
   }
+
+  /* ===== POS SPLIT LAYOUT ===== */
+  #tab-pos { padding: 0 !important; }
+  #pos-layout { min-height: calc(100vh - 140px); }
+  #pos-menu-area { padding: 20px; }
+  
+  /* Cart panel: selalu visible di desktop */
+  #pos-cart-panel { display: flex; }
+  #pos-cart-btn { display: none !important; }
+  
+  /* Mobile: sembunyikan panel, tampilkan floating button */
+  @media (max-width: 768px) {
+    #pos-layout { flex-direction: column; }
+    #pos-cart-panel {
+      position: fixed !important;
+      top: 0; right: -100%;
+      width: 100% !important;
+      max-width: 380px;
+      height: 100vh !important;
+      z-index: 300;
+      transition: right 0.3s ease;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.2);
+    }
+    #pos-cart-panel.mobile-open { right: 0 !important; }
+    #pos-cart-btn { display: flex !important; }
+    #pos-menu-area { padding-bottom: 80px; }
+  }
+
+  /* SELESAI button disabled style */
+  #btn-selesai-pos:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  #btn-selesai-pos:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 16px rgba(224,48,39,0.4);
+  }
+
+  /* POS tab override - full bleed layout */
+  #tab-pos { overflow: hidden; }
+  #pos-layout {
+    display: flex;
+    flex-direction: row;
+  }
+  #pos-menu-area {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 72px);
+  }
+  #pos-cart-panel {
+    width: 300px;
+    min-width: 280px;
+    flex-shrink: 0;
+    border-left: 2px solid var(--border);
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 72px);
+    position: sticky;
+    top: 0;
+    overflow: hidden;
+  }
+  #pos-cart-items {
+    flex: 1;
+    overflow-y: auto;
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -2153,100 +2221,122 @@
 
   <!-- TAB POS (KASIR) -->
   <div id="tab-pos" class="tab-content">
-    <!-- Summary Bar (compact) -->
-    <div style="background:linear-gradient(135deg, var(--orange), var(--red));padding:12px 16px;margin:-24px -24px 16px;display:flex;justify-content:space-around;text-align:center;color:white;">
-      <div>
-        <div style="font-size:10px;opacity:0.9;">PENJUALAN</div>
-        <div style="font-size:18px;font-weight:800;" id="pos-total-revenue">Rp 0</div>
+  <!-- POS Split Layout: Left = menu grid, Right = cart panel -->
+  <div id="pos-layout" style="display:flex;gap:0;margin:-24px;min-height:calc(100vh - 140px);">
+
+    <!-- LEFT: Menu Area -->
+    <div id="pos-menu-area" style="flex:1;min-width:0;padding:20px;overflow-y:auto;">
+
+      <!-- Summary Bar -->
+      <div style="background:linear-gradient(135deg,var(--orange),var(--red));border-radius:14px;padding:14px 16px;margin-bottom:20px;display:flex;justify-content:space-around;text-align:center;color:white;">
+        <div>
+          <div style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:1px;">PENJUALAN</div>
+          <div style="font-size:17px;font-weight:800;" id="pos-total-revenue">Rp 0</div>
+        </div>
+        <div style="border-left:1px solid rgba(255,255,255,0.3);padding-left:16px;">
+          <div style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:1px;">PROFIT</div>
+          <div style="font-size:17px;font-weight:800;" id="pos-total-profit">Rp 0</div>
+        </div>
+        <div style="border-left:1px solid rgba(255,255,255,0.3);padding-left:16px;">
+          <div style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:1px;">TRANSAKSI</div>
+          <div style="font-size:17px;font-weight:800;" id="pos-total-trx">0</div>
+        </div>
       </div>
-      <div>
-        <div style="font-size:10px;opacity:0.9;">PROFIT</div>
-        <div style="font-size:18px;font-weight:800;" id="pos-total-profit">Rp 0</div>
+
+      <!-- Item Satuan -->
+      <div style="margin-bottom:24px;">
+        <h3 style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:12px;">ITEM SATUAN</h3>
+        <div id="pos-menu-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;"></div>
       </div>
-      <div>
-        <div style="font-size:10px;opacity:0.9;">TRANSAKSI</div>
-        <div style="font-size:18px;font-weight:800;" id="pos-total-trx">0</div>
+
+      <!-- Bundling Promo -->
+      <div id="pos-bundling-section" style="margin-bottom:24px;display:none;">
+        <h3 style="font-size:12px;font-weight:800;color:var(--red);letter-spacing:1px;margin-bottom:12px;">📦 PROMO BUNDLING</h3>
+        <div id="pos-bundling-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;"></div>
       </div>
     </div>
 
-    <!-- Item Grid (touch-friendly) -->
-    <div style="margin-bottom:24px;">
-      <h3 style="font-size:14px;font-weight:800;margin-bottom:12px;color:var(--muted);">ITEM SATUAN</h3>
-      <div id="pos-menu-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;"></div>
-    </div>
-
-    <!-- Bundling Promo Grid -->
-    <div id="pos-bundling-section" style="margin-bottom:24px;">
-      <h3 style="font-size:14px;font-weight:800;margin-bottom:12px;color:var(--red);">📦 ITEM PROMO (BUNDLING)</h3>
-      <div id="pos-bundling-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;"></div>
-    </div>
-
-    <!-- Cart Button (floating) -->
-    <button onclick="togglePOSCart()" id="pos-cart-btn" style="position:fixed;bottom:24px;right:24px;width:64px;height:64px;border-radius:50%;background:var(--orange);color:white;border:none;box-shadow:0 4px 16px rgba(224,48,39,0.4);font-size:24px;cursor:pointer;z-index:100;display:flex;align-items:center;justify-content:center;font-weight:800;">
-      🛒<span id="pos-cart-count" style="position:absolute;top:-4px;right:-4px;background:var(--red);width:24px;height:24px;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;">0</span>
-    </button>
-  </div>
-
-  <!-- SIDEBAR CART -->
-  <div id="pos-cart-sidebar" style="position:fixed;top:0;right:-100%;width:100%;max-width:400px;height:100vh;background:var(--card);box-shadow:-4px 0 20px rgba(0,0,0,0.2);z-index:200;transition:right 0.3s;overflow-y:auto;">
-    <div style="padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <h3 style="font-size:20px;font-weight:800;">🛒 Keranjang</h3>
-        <button onclick="togglePOSCart()" style="background:none;border:none;font-size:28px;cursor:pointer;color:var(--muted);">✕</button>
+    <!-- RIGHT: Cart Panel (always visible on desktop) -->
+    <div id="pos-cart-panel" style="width:320px;flex-shrink:0;background:var(--card);border-left:2px solid var(--border);display:flex;flex-direction:column;height:calc(100vh - 72px);position:sticky;top:72px;overflow-y:auto;">
+      
+      <!-- Cart Header -->
+      <div style="padding:16px 16px 12px;border-bottom:2px solid var(--border);background:var(--card);position:sticky;top:0;z-index:2;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:16px;font-weight:900;">🛒 Keranjang</div>
+          <div id="pos-cart-badge" style="background:var(--orange);color:white;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;display:none;">0 item</div>
+        </div>
       </div>
 
       <!-- Cart Items -->
-      <div id="pos-cart-items" style="margin-bottom:20px;"></div>
+      <div id="pos-cart-items" style="flex:1;padding:12px;overflow-y:auto;"></div>
 
-      <!-- Promo Selector (hanya muncul kalau cart isi item satuan saja) -->
-      <div id="pos-promo-section" style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:16px;display:none;">
-        <label style="font-weight:700;display:block;margin-bottom:8px;font-size:13px;">🏷️ Gunakan Promo?</label>
-        <select id="pos-promo-select" onchange="applyPromoToPOS()" style="width:100%;padding:10px;border-radius:8px;border:2px solid var(--border);font-weight:600;background:var(--card);">
-          <option value="">Tanpa Promo</option>
-        </select>
-      </div>
+      <!-- Cart Footer: promo + payment + total -->
+      <div style="padding:12px 16px;border-top:2px solid var(--border);background:var(--card);">
+        
+        <!-- Promo Selector -->
+        <div id="pos-promo-section" style="margin-bottom:12px;display:none;">
+          <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:0.5px;display:block;margin-bottom:6px;">🏷️ GUNAKAN PROMO</label>
+          <select id="pos-promo-select" onchange="applyPromoToPOS()" style="width:100%;padding:8px 10px;border-radius:8px;border:2px solid var(--border);font-weight:600;font-size:13px;background:var(--bg);">
+            <option value="">Tanpa Promo</option>
+          </select>
+        </div>
 
-      <!-- Summary -->
-      <div style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:20px;">
-        <div id="pos-promo-discount" style="display:none;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed var(--border);">
-          <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--red);">
-            <span>Diskon Promo:</span>
-            <span style="font-weight:700;" id="pos-discount-amount">- Rp 0</span>
+        <!-- Diskon info -->
+        <div id="pos-promo-discount" style="display:none;margin-bottom:8px;padding:6px 10px;background:#FFF0EF;border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--red);">
+            <span style="font-weight:700;">Diskon:</span>
+            <span style="font-weight:800;" id="pos-discount-amount">- Rp 0</span>
           </div>
         </div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-          <span style="font-weight:700;">Subtotal:</span>
-          <span style="font-weight:800;font-size:20px;" id="pos-subtotal">Rp 0</span>
+
+        <!-- Subtotal + Profit -->
+        <div style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:700;color:var(--muted);">Subtotal</span>
+            <span style="font-size:17px;font-weight:900;" id="pos-subtotal">Rp 0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:12px;color:var(--green);font-weight:700;">Profit</span>
+            <span style="font-size:12px;color:var(--green);font-weight:800;" id="pos-profit">Rp 0</span>
+          </div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--green);">
-          <span>Profit:</span>
-          <span id="pos-profit" style="font-weight:700;">Rp 0</span>
+
+        <!-- Bayar input -->
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:0.5px;display:block;margin-bottom:6px;">💵 UANG DIBAYAR</label>
+          <input type="number" id="pos-bayar" placeholder="0" oninput="hitungKembalianPOS()"
+            style="width:100%;padding:10px 12px;border-radius:10px;border:2px solid var(--border);font-size:18px;font-weight:800;background:var(--bg);text-align:right;box-sizing:border-box;" />
         </div>
-      </div>
 
-      <!-- Payment -->
-      <div style="margin-bottom:20px;">
-        <label style="font-weight:700;display:block;margin-bottom:8px;">💵 Uang Dibayar</label>
-        <input type="number" id="pos-bayar" placeholder="50000" oninput="hitungKembalianPOS()" style="width:100%;padding:14px;border-radius:12px;border:2px solid var(--border);font-size:18px;font-weight:700;background:var(--card);" />
-      </div>
+        <!-- Kembalian -->
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+          <span style="font-size:12px;font-weight:700;color:var(--muted);">Kembalian</span>
+          <span id="pos-kembalian" style="font-size:18px;font-weight:900;color:var(--green);">Rp 0</span>
+        </div>
 
-      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:20px;text-align:center;">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Kembalian</div>
-        <div id="pos-kembalian" style="font-size:24px;font-weight:800;color:var(--green);">Rp 0</div>
+        <!-- Action Buttons -->
+        <button onclick="konfirmasiSimpanTransaksi()" id="btn-selesai-pos"
+          style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--red),var(--orange));color:white;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:8px;font-family:'Nunito',sans-serif;box-shadow:0 3px 12px rgba(224,48,39,0.3);"
+          disabled>
+          ✅ SELESAI
+        </button>
+        <button onclick="clearPOSCart()"
+          style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;">
+          🗑️ Kosongkan
+        </button>
       </div>
-
-      <!-- Buttons -->
-      <button onclick="lihatDetailOrderCart()" style="width:100%;padding:12px;border-radius:12px;border:2px solid var(--orange);background:var(--card);color:var(--orange);font-weight:800;cursor:pointer;font-size:14px;margin-bottom:10px;">
-        🧾 Lihat Detail Order
-      </button>
-      <button onclick="simpanTransaksiPOS()" class="btn btn-primary" style="width:100%;padding:16px;font-size:16px;font-weight:800;margin-bottom:12px;">
-        ✅ SELESAI - Simpan Transaksi
-      </button>
-      <button onclick="clearPOSCart()" style="width:100%;padding:12px;border-radius:12px;border:2px solid var(--border);background:var(--card);color:var(--red);font-weight:700;cursor:pointer;font-size:14px;">
-        🗑️ Kosongkan Keranjang
-      </button>
     </div>
+
   </div>
+
+  <!-- Mobile: floating cart toggle button -->
+  <button onclick="toggleMobileCart()" id="pos-cart-btn"
+    style="display:none;position:fixed;bottom:24px;right:24px;width:60px;height:60px;border-radius:50%;background:var(--orange);color:white;border:none;box-shadow:0 4px 16px rgba(244,124,32,0.5);font-size:22px;cursor:pointer;z-index:100;align-items:center;justify-content:center;">
+    🛒<span id="pos-cart-count" style="position:absolute;top:-4px;right:-4px;background:var(--red);width:22px;height:22px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;">0</span>
+  </button>
+</div>
+
+
 
   <!-- TAB PANDUAN -->
   <div id="tab-panduan" class="tab-content">
@@ -2614,11 +2704,11 @@
 
 <!-- MODAL KONFIRMASI CUSTOM (pengganti confirm() yang diblok di sandbox) -->
 <div id="modal-konfirmasi" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
-  <div style="background:var(--card);border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+  <div style="background:var(--card);border-radius:20px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;max-height:85vh;overflow-y:auto;">
     <div style="padding:20px 20px 0;">
       <div style="font-size:36px;text-align:center;margin-bottom:10px;" id="konfirmasi-icon">⚠️</div>
       <div style="font-family:'Fredoka One',cursive;font-size:18px;color:var(--dark);text-align:center;margin-bottom:8px;" id="konfirmasi-title">Konfirmasi</div>
-      <div style="font-size:14px;color:var(--muted);text-align:center;font-weight:600;line-height:1.5;margin-bottom:20px;" id="konfirmasi-message">Yakin?</div>
+      <div style="font-size:13px;color:var(--dark);font-weight:600;line-height:1.7;margin-bottom:20px;max-height:280px;overflow-y:auto;" id="konfirmasi-message">Yakin?</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:2px solid var(--border);">
       <button id="konfirmasi-batal" onclick="tutupKonfirmasi()" style="padding:16px;border:none;background:transparent;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;color:var(--muted);cursor:pointer;border-right:1px solid var(--border);">Batal</button>
@@ -4528,18 +4618,30 @@ function updateCartSidebar() {
   
   const cartKeys = Object.keys(posCart);
   const totalQty = cartKeys.reduce((s, k) => s + posCart[k], 0);
+
+  // Update badge & floating button
+  const cntEl = document.getElementById('pos-cart-count');
+  if (cntEl) cntEl.textContent = totalQty;
+  const badge = document.getElementById('pos-cart-badge');
+  if (badge) { badge.textContent = totalQty + ' item'; badge.style.display = totalQty > 0 ? 'block' : 'none'; }
   
-  document.getElementById('pos-cart-count').textContent = totalQty;
+  // Enable/disable SELESAI button
+  const btnSelesai = document.getElementById('btn-selesai-pos');
+  if (btnSelesai) btnSelesai.disabled = cartKeys.length === 0;
   
   if (cartKeys.length === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:40px 20px;color:var(--muted);">
         <div style="font-size:48px;margin-bottom:12px;">🛒</div>
-        <p>Keranjang kosong</p>
+        <p style="font-weight:700;">Keranjang kosong</p>
+        <small>Pilih menu di sebelah kiri</small>
       </div>
     `;
     document.getElementById('pos-subtotal').textContent = 'Rp 0';
     document.getElementById('pos-profit').textContent = 'Rp 0';
+    document.getElementById('pos-kembalian').textContent = 'Rp 0';
+    const bayarEl = document.getElementById('pos-bayar');
+    if (bayarEl) bayarEl.value = '';
     return;
   }
   
@@ -4632,16 +4734,12 @@ function updateCartSidebar() {
   hitungKembalianPOS();
 }
 
-function togglePOSCart() {
-  const sidebar = document.getElementById('pos-cart-sidebar');
-  const currentRight = sidebar.style.right;
-  
-  if (currentRight === '0px') {
-    sidebar.style.right = '-100%';
-  } else {
-    sidebar.style.right = '0px';
-  }
+function toggleMobileCart() {
+  const panel = document.getElementById('pos-cart-panel');
+  if (panel) panel.classList.toggle('mobile-open');
 }
+// Compat alias
+function togglePOSCart() { toggleMobileCart(); }
 
 function clearPOSCart() {
   showKonfirmasi({
@@ -4668,6 +4766,39 @@ function hitungKembalianPOS() {
   const kembalianEl = document.getElementById('pos-kembalian');
   kembalianEl.textContent = formatRp(kembalian >= 0 ? kembalian : 0);
   kembalianEl.style.color = kembalian >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+function konfirmasiSimpanTransaksi() {
+  const cartKeys = Object.keys(posCart);
+  if (cartKeys.length === 0) { showToast('⚠️ Keranjang kosong'); return; }
+  const subtotalText = document.getElementById('pos-subtotal').textContent;
+  const subtotal = parseFloat(subtotalText.replace(/[^0-9]/g, '')) || 0;
+  const bayar = parseFloat(document.getElementById('pos-bayar').value) || 0;
+  if (bayar <= 0) { showToast('⚠️ Masukkan uang dibayar dulu!'); document.getElementById('pos-bayar').focus(); return; }
+  if (bayar < subtotal) { showToast('⚠️ Uang dibayar kurang!'); return; }
+  const kembalian = bayar - subtotal;
+  const data = JSON.parse(localStorage.getItem('kedaiHeula_menu') || '[]');
+  const promos = JSON.parse(localStorage.getItem('kedaiHeula_promos') || '[]');
+  // Build summary items
+  const cartKeys2 = Object.keys(posCart);
+  const itemLines = cartKeys2.map(key => {
+    const qty = posCart[key];
+    const isBundling = key.toString().startsWith('b-');
+    if (isBundling) {
+      const promo = promos.find(p => p.id == key.slice(2));
+      return promo ? `• ${qty}x ${promo.nama} = ${formatRp((promo.harga||0)*qty)}` : null;
+    } else {
+      const menu = data[parseInt(key)];
+      return menu ? `• ${qty}x ${menu.nama} = ${formatRp(menu.hargaJual*qty)}` : null;
+    }
+  }).filter(Boolean).join('<br>');
+  showKonfirmasi({
+    icon: '🧾',
+    title: 'Konfirmasi Transaksi',
+    message: `<div style="text-align:left;font-size:13px;line-height:1.8;">${itemLines}<br><div style="border-top:1px solid #eee;margin-top:8px;padding-top:8px;"><b>Total: ${subtotalText}</b><br>Bayar: ${formatRp(bayar)}<br><b style="color:var(--green);">Kembalian: ${formatRp(kembalian)}</b></div></div>`,
+    labelOk: '✅ Simpan Transaksi',
+    onOk: simpanTransaksiPOS
+  });
 }
 
 function simpanTransaksiPOS() {
@@ -4738,33 +4869,44 @@ function simpanTransaksiPOS() {
 
   // Reset cart & UI
   posCart = {};
-  document.getElementById('pos-bayar').value = '';
+  const bayarEl = document.getElementById('pos-bayar');
+  if (bayarEl) bayarEl.value = '';
+  const kemEl = document.getElementById('pos-kembalian');
+  if (kemEl) { kemEl.textContent = 'Rp 0'; kemEl.style.color = 'var(--green)'; }
   renderPOSGrid();
   renderPOSBundling();
   updateCartSidebar();
   updatePOSSummary();
   renderLaporan();
+  // Tutup mobile cart jika terbuka
+  const cartPanel = document.getElementById('pos-cart-panel');
+  if (cartPanel) cartPanel.classList.remove('mobile-open');
 
   lihatNota(transaksi);
   showToast('✅ Transaksi berhasil!');
 }
 
 function updatePOSSummary() {
-  const today = new Date().toISOString().split('T')[0];
-  const key = `kedaiHeula_pos_${today}`;
-  const transaksi = JSON.parse(localStorage.getItem(key) || '[]');
+  // Baca dari kedaiHeula_transaksi (Firebase-synced flat records)
+  // Filter hanya hari ini (WIB)
+  const today = getWIBDateString();
+  const allRecords = JSON.parse(localStorage.getItem('kedaiHeula_transaksi') || '[]');
+  const todayRecords = allRecords.filter(r => r.tanggal === today);
   
   let totalRevenue = 0;
-  let totalProfit = 0;
-  
-  transaksi.forEach(t => {
-    totalRevenue += t.total;
-    t.items.forEach(item => totalProfit += item.profit);
+  let totalProfit  = 0;
+  // trxId unik = 1 transaksi kasir, hitung per trxId
+  const trxIds = new Set();
+  todayRecords.forEach(r => {
+    totalRevenue += (r.hargaJual || 0) * (r.qty || 0);
+    totalProfit  += r.profit || 0;
+    if (r.trxId) trxIds.add(r.trxId);
+    else trxIds.add(r.id); // record tanpa trxId = 1 transaksi lama
   });
   
   document.getElementById('pos-total-revenue').textContent = formatRp(totalRevenue);
-  document.getElementById('pos-total-profit').textContent = formatRp(totalProfit);
-  document.getElementById('pos-total-trx').textContent = transaksi.length;
+  document.getElementById('pos-total-profit').textContent  = formatRp(totalProfit);
+  document.getElementById('pos-total-trx').textContent     = trxIds.size;
 }
 
 // =====================
@@ -5568,7 +5710,9 @@ function showKonfirmasi({ icon = '⚠️', title = 'Konfirmasi', message = 'Yaki
   _konfirmasiCallback = onOk;
   document.getElementById('konfirmasi-icon').textContent = icon;
   document.getElementById('konfirmasi-title').textContent = title;
-  document.getElementById('konfirmasi-message').textContent = message;
+  const _kmsg = document.getElementById('konfirmasi-message');
+  if (message && message.includes('<')) _kmsg.innerHTML = message;
+  else _kmsg.textContent = message;
   document.getElementById('konfirmasi-ok').textContent = labelOk;
   document.getElementById('modal-konfirmasi').style.display = 'flex';
 }
