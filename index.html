@@ -222,90 +222,178 @@
       font-size: 10px !important;
     }
   }
+  /* ══════════════════════════════════════════════
+     POS LAYOUT
+  ══════════════════════════════════════════════ */
 
-  /* ─────────────────────────────────────────────────
-     POS LAYOUT — SPLIT DESKTOP / STACKED MOBILE
-  ───────────────────────────────────────────────── */
-  #tab-pos { margin: -24px; padding: 0; overflow: hidden; }
-  #pos-layout { display: flex; flex-direction: row; height: calc(100vh - 72px); overflow: hidden; }
-  #pos-menu-area { flex: 1; min-width: 0; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+  /* Summary bar */
+  #pos-summary-bar {
+    background: linear-gradient(135deg, var(--orange), var(--red));
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+    color: white;
+  }
+  .pos-sum-label { font-size: 10px; font-weight: 700; opacity: .85; letter-spacing: 1px; }
+  .pos-sum-val   { font-size: 17px; font-weight: 800; }
+  .pos-section-label { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: 1px; margin-bottom: 12px; }
+
+  /* Menu grid */
   #pos-menu-grid, #pos-bundling-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
   }
 
-  /* Cart panel: kanan desktop */
-  #pos-cart-panel {
-    width: 290px; min-width: 260px; max-width: 290px;
-    flex-shrink: 0;
-    display: flex; flex-direction: column;
-    border-left: 2px solid var(--border);
-    background: var(--card);
-    overflow: hidden;
+  /* ── DESKTOP LAYOUT ── */
+  @media (min-width: 769px) {
+    #tab-pos {
+      margin: -24px;
+      padding: 0;
+      overflow: hidden;
+      height: calc(100vh - 72px);
+    }
+    #pos-layout {
+      display: flex;
+      flex-direction: row;
+      height: 100%;
+      overflow: hidden;
+    }
+    #pos-menu-area {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    #pos-cart-panel {
+      width: 290px;
+      min-width: 260px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid var(--border);
+      background: var(--card);
+      height: 100%;
+      overflow: hidden;
+      position: static;
+    }
+    #pos-cart-items {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+    }
+    #pos-cart-footer {
+      padding: 12px 16px;
+      border-top: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+    #pos-cart-header {
+      padding: 14px 16px 12px;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    #pos-cart-btn     { display: none !important; }
+    #pos-cart-overlay { display: none !important; }
+    #btn-tutup-cart   { display: none !important; }
   }
-  #pos-cart-items { flex: 1; overflow-y: auto; padding: 8px 12px; }
 
-  /* Floating button: HIDDEN di desktop */
-  #pos-cart-btn   { display: none !important; }
-  #pos-cart-overlay { display: none; }
-  #pos-cart-overlay.active {
-    display: block; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5); z-index: 499;
-    backdrop-filter: blur(2px);
-  }
-
-  /* SELESAI button */
-  #btn-selesai-pos { transition: all 0.2s; }
-  #btn-selesai-pos:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none !important; }
-
-  /* POS MOBILE (≤768px): stacked, cart slide dari bawah */
+  /* ── MOBILE LAYOUT ── */
   @media (max-width: 768px) {
-    #tab-pos    { margin: 0 !important; padding: 0 !important; overflow: visible !important; }
-    #pos-layout { display: block !important; height: auto !important; overflow: visible !important; }
-    #pos-menu-area { display: block !important; width: 100% !important; overflow: visible !important; padding: 12px 12px 90px !important; }
-    #pos-menu-grid, #pos-bundling-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
-
+    #tab-pos {
+      margin: 0;
+      padding: 0;
+      min-height: 100dvh;
+    }
+    #pos-layout {
+      display: block;
+      height: auto;
+    }
+    #pos-menu-area {
+      display: block;
+      width: 100%;
+      padding: 12px 12px 100px;
+    }
+    #pos-menu-grid, #pos-bundling-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
     /* Cart panel: tersembunyi, muncul dari bawah */
     #pos-cart-panel {
-      display: none !important;
-      position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
-      width: 100% !important; max-width: 100% !important; min-width: unset !important;
-      height: 88vh !important; border-left: none !important;
-      border-top: 2px solid var(--border) !important;
-      border-radius: 20px 20px 0 0 !important;
-      box-shadow: 0 -8px 40px rgba(0,0,0,0.25) !important;
-      z-index: 500 !important; overflow: hidden !important;
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      width: 100%;
+      height: 88dvh;
+      border-left: none;
+      border-top: 2px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.25);
+      z-index: 500;
+      overflow: hidden;
+      flex-direction: column;
+      background: var(--card);
     }
     #pos-cart-panel.mobile-open {
-      display: flex !important;
-      animation: slideUpCart 0.28s ease !important;
+      display: flex;
+      animation: slideUpCart .28s ease;
     }
     @keyframes slideUpCart {
       from { transform: translateY(100%); }
       to   { transform: translateY(0); }
     }
-
-    /* Floating cart button: VISIBLE di mobile */
-    #pos-cart-btn {
-      display: flex !important;
-      position: fixed !important; bottom: 20px !important; right: 20px !important;
-      width: 60px !important; height: 60px !important;
-      border-radius: 50% !important;
-      background: linear-gradient(135deg, var(--orange), var(--red)) !important;
-      color: white !important; border: none !important;
-      box-shadow: 0 4px 20px rgba(224,48,39,0.5) !important;
-      font-size: 22px !important; cursor: pointer !important;
-      z-index: 200 !important; align-items: center !important; justify-content: center !important;
+    #pos-cart-items {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
     }
+    #pos-cart-footer {
+      padding: 12px 16px;
+      border-top: 2px solid var(--border);
+      overflow-y: auto;
+      max-height: 60vh;
+    }
+    #pos-cart-header {
+      padding: 14px 16px 12px;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    #btn-tutup-cart   { display: block !important; }
+    /* Floating button */
+    #pos-cart-btn {
+      display: flex;
+      position: fixed;
+      bottom: 20px; right: 20px;
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--orange), var(--red));
+      color: white; border: none;
+      box-shadow: 0 4px 20px rgba(224,48,39,.5);
+      font-size: 22px; cursor: pointer; z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    /* Overlay */
+    #pos-cart-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 499;
+    }
+    #pos-cart-overlay.active { display: block; }
   }
 
-  /* POS DESKTOP: force cart panel di kanan */
-  @media (min-width: 769px) {
-    #pos-cart-panel { display: flex !important; position: static !important; }
-    #pos-cart-btn   { display: none !important; }
-    #pos-layout     { flex-direction: row !important; }
-  }
+  /* SELESAI button */
+  #btn-selesai-pos { transition: all 0.2s; }
+  #btn-selesai-pos:disabled { opacity: .35; cursor: not-allowed; box-shadow: none !important; }
 
   /* Kelola Akun */
   #tab-akun { max-width: 680px; margin: 0 auto; width: 100%; }
@@ -1172,78 +1260,43 @@
 
   <!-- TAB POS (KASIR) -->
   <div id="tab-pos" class="tab-content">
-  <!-- POS Split Layout: Left = menu grid, Right = cart panel -->
   <div id="pos-layout">
 
-    <!-- LEFT: Menu Area -->
+    <!-- KIRI: Area Menu -->
     <div id="pos-menu-area">
-
-      <!-- Summary Bar -->
-      <div style="background:linear-gradient(135deg,var(--orange),var(--red));border-radius:14px;padding:14px 16px;margin-bottom:20px;display:flex;justify-content:space-around;text-align:center;color:white;">
-        <div>
-          <div style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:1px;">PENJUALAN</div>
-          <div style="font-size:17px;font-weight:800;" id="pos-total-revenue">Rp 0</div>
-        </div>
-        <div style="border-left:1px solid rgba(255,255,255,0.3);padding-left:16px;">
-          <div style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:1px;">PROFIT</div>
-          <div style="font-size:17px;font-weight:800;" id="pos-total-profit">Rp 0</div>
-        </div>
-        <div style="border-left:1px solid rgba(255,255,255,0.3);padding-left:16px;">
-          <div style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:1px;">TRANSAKSI</div>
-          <div style="font-size:17px;font-weight:800;" id="pos-total-trx">0</div>
-        </div>
+      <div id="pos-summary-bar">
+        <div><div class="pos-sum-label">PENJUALAN</div><div id="pos-total-revenue" class="pos-sum-val">Rp 0</div></div>
+        <div><div class="pos-sum-label">PROFIT</div><div id="pos-total-profit" class="pos-sum-val">Rp 0</div></div>
+        <div><div class="pos-sum-label">TRANSAKSI</div><div id="pos-total-trx" class="pos-sum-val">0</div></div>
       </div>
-
-      <!-- Item Satuan -->
-      <div style="margin-bottom:24px;">
-        <h3 style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:12px;">ITEM SATUAN</h3>
-        <div id="pos-menu-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;"></div>
+      <div style="margin-bottom:20px;">
+        <div class="pos-section-label">ITEM SATUAN</div>
+        <div id="pos-menu-grid"></div>
       </div>
-
-      <!-- Bundling Promo -->
-      <div id="pos-bundling-section" style="margin-bottom:24px;display:none;">
-        <h3 style="font-size:12px;font-weight:800;color:var(--red);letter-spacing:1px;margin-bottom:12px;">📦 PROMO BUNDLING</h3>
-        <div id="pos-bundling-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;"></div>
+      <div id="pos-bundling-section" style="margin-bottom:20px;display:none;">
+        <div class="pos-section-label" style="color:var(--red);">📦 PROMO BUNDLING</div>
+        <div id="pos-bundling-grid"></div>
       </div>
     </div>
 
-    <!-- RIGHT: Cart Panel (always visible on desktop) -->
-    <!-- Mobile cart overlay -->
-  <div id="pos-cart-overlay" onclick="toggleMobileCart()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:399;backdrop-filter:blur(2px);"></div>
-
-  <div id="pos-cart-panel">
-      
-      <!-- Cart Header -->
-      <div style="padding:16px 16px 12px;border-bottom:2px solid var(--border);background:var(--card);position:sticky;top:0;z-index:2;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:16px;font-weight:900;">🛒 Keranjang</div>
-          <div id="pos-cart-badge" style="background:var(--orange);color:white;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;display:none;">0 item</div>
-        </div>
+    <!-- KANAN: Cart Panel -->
+    <div id="pos-cart-panel">
+      <div id="pos-cart-header">
+        <span style="font-size:15px;font-weight:900;">🛒 Keranjang</span>
+        <span id="pos-cart-badge" style="display:none;background:var(--orange);color:white;font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;">0</span>
+        <button id="btn-tutup-cart" onclick="toggleMobileCart()" style="display:none;margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;line-height:1;padding:0 4px;">✕</button>
       </div>
-
-      <!-- Cart Items -->
-      <div id="pos-cart-items" style="flex:1;padding:12px;overflow-y:auto;"></div>
-
-      <!-- Cart Footer: promo + payment + total -->
-      <div style="padding:12px 16px;border-top:2px solid var(--border);background:var(--card);">
-        
-        <!-- Promo Selector -->
-        <div id="pos-promo-section" style="margin-bottom:12px;display:none;">
-          <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:0.5px;display:block;margin-bottom:6px;">🏷️ GUNAKAN PROMO</label>
-          <select id="pos-promo-select" onchange="applyPromoToPOS()" style="width:100%;padding:8px 10px;border-radius:8px;border:2px solid var(--border);font-weight:600;font-size:13px;background:var(--bg);">
-            <option value="">Tanpa Promo</option>
-          </select>
+      <div id="pos-cart-items"></div>
+      <div id="pos-cart-footer">
+        <div id="pos-promo-section" style="display:none;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px;">🏷️ PROMO</div>
+          <select id="pos-promo-select" onchange="applyPromoToPOS()" style="width:100%;padding:8px;border-radius:8px;border:2px solid var(--border);font-weight:600;font-size:13px;background:var(--bg);"></select>
         </div>
-
-        <!-- Diskon info -->
         <div id="pos-promo-discount" style="display:none;margin-bottom:8px;padding:6px 10px;background:#FFF0EF;border-radius:8px;">
           <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--red);">
-            <span style="font-weight:700;">Diskon:</span>
-            <span style="font-weight:800;" id="pos-discount-amount">- Rp 0</span>
+            <span style="font-weight:700;">Diskon:</span><span id="pos-discount-amount" style="font-weight:800;">- Rp 0</span>
           </div>
         </div>
-
-        <!-- Subtotal + Profit -->
         <div style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:10px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
             <span style="font-size:13px;font-weight:700;color:var(--muted);">Subtotal</span>
@@ -1254,24 +1307,17 @@
             <span style="font-size:12px;color:var(--green);font-weight:800;" id="pos-profit">Rp 0</span>
           </div>
         </div>
-
-        <!-- Bayar input -->
         <div style="margin-bottom:8px;">
-          <label style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:0.5px;display:block;margin-bottom:6px;">💵 UANG DIBAYAR</label>
+          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.5px;margin-bottom:6px;">💵 UANG DIBAYAR</div>
           <input type="number" id="pos-bayar" placeholder="0" oninput="hitungKembalianPOS()"
-            style="width:100%;padding:10px 12px;border-radius:10px;border:2px solid var(--border);font-size:18px;font-weight:800;background:var(--bg);text-align:right;box-sizing:border-box;" />
+            style="width:100%;padding:10px 12px;border-radius:10px;border:2px solid var(--border);font-size:18px;font-weight:800;background:var(--bg);text-align:right;box-sizing:border-box;">
         </div>
-
-        <!-- Kembalian -->
         <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;">
           <span style="font-size:12px;font-weight:700;color:var(--muted);">Kembalian</span>
           <span id="pos-kembalian" style="font-size:18px;font-weight:900;color:var(--green);">Rp 0</span>
         </div>
-
-        <!-- Action Buttons -->
-        <button onclick="konfirmasiSimpanTransaksi()" id="btn-selesai-pos"
-          style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--red),var(--orange));color:white;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:8px;font-family:'Nunito',sans-serif;box-shadow:0 3px 12px rgba(224,48,39,0.3);"
-          disabled>
+        <button onclick="konfirmasiSimpanTransaksi()" id="btn-selesai-pos" disabled
+          style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--red),var(--orange));color:white;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:8px;font-family:'Nunito',sans-serif;">
           ✅ SELESAI
         </button>
         <button onclick="clearPOSCart()"
@@ -1283,13 +1329,15 @@
 
   </div>
 
-  <!-- Mobile: floating cart toggle button -->
-  <button onclick="toggleMobileCart()" id="pos-cart-btn">
+  <!-- Floating cart btn (mobile only) -->
+  <button id="pos-cart-btn" onclick="toggleMobileCart()">
     🛒<span id="pos-cart-count" style="position:absolute;top:-4px;right:-4px;background:var(--red);width:22px;height:22px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;">0</span>
   </button>
+
+  <!-- Overlay (mobile) -->
+  <div id="pos-cart-overlay" onclick="toggleMobileCart()"></div>
+
 </div>
-
-
 
   <!-- TAB PANDUAN -->
   <div id="tab-panduan" class="tab-content">
