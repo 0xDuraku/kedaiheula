@@ -608,6 +608,67 @@
 
   /* Kelola Akun — sudah ada di CONTENT CSS di atas */
 
+
+  /* ── BAHAN ROW & BIAYA ROW (Hitung HPP) ── */
+  .bahan-row,
+  .biaya-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .bahan-row input,
+  .biaya-row input,
+  .bahan-row select,
+  .biaya-row select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--bg);
+    color: var(--dark);
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  .bahan-row input:focus,
+  .biaya-row input:focus {
+    outline: none;
+    border-color: var(--orange);
+  }
+  .btn-hapus {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .btn-hapus:hover { color: var(--red); background: #FFF0EF; }
+
+  @media (max-width: 640px) {
+    .bahan-row,
+    .biaya-row {
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .bahan-row > input:first-child,
+    .biaya-row > input:first-child {
+      grid-column: 1 / -1;
+    }
+    .btn-hapus {
+      grid-column: 2;
+      justify-self: end;
+    }
+  }
+
   /* ══════════════════════════════════════════════════
      ROLE-BASED: ini HARUS di baris paling bawah CSS
      agar menang dari semua rule di atas
