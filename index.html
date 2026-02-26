@@ -215,7 +215,7 @@
   input[type="range"] { width: 100%; accent-color: var(--orange); cursor: pointer; }
 
   @media (max-width: 600px) {
-    .form-row, .form-row.three, .three { grid-template-columns: 1fr !important; gap: 0 !important; }
+    .form-row, .form-row.three, .three { grid-template-columns: 1fr !important; gap: 12px !important; margin-bottom: 0 !important; }
   }
 
   /* ── BUTTONS ── */
@@ -606,11 +606,7 @@
   #btn-selesai-pos { transition: all 0.2s; }
   #btn-selesai-pos:disabled { opacity: .35; cursor: not-allowed; box-shadow: none !important; }
 
-  /* Kelola Akun */
-  #tab-akun { max-width: 680px; margin: 0 auto; width: 100%; }
-  @media (max-width: 520px) {
-    #tab-akun .form-row { grid-template-columns: 1fr !important; }
-  }
+  /* Kelola Akun — sudah ada di CONTENT CSS di atas */
 
   /* ══════════════════════════════════════════════════
      ROLE-BASED: ini HARUS di baris paling bawah CSS
