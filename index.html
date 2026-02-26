@@ -117,23 +117,6 @@
     gap: 2px;
   }
 
-  .tab-icon {
-    background: transparent;
-    border: none;
-    border-radius: 12px;
-    padding: 11px 14px;
-    display: flex;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 10px;
-    cursor: pointer;
-    transition: all 0.18s ease;
-    font-family: 'Nunito', sans-serif;
-    width: 100%;
-    text-align: left;
-    min-width: 0;
-  }
-
   /* ─────────────────────────────────────────────────
      TAB NAVIGATION
   ───────────────────────────────────────────────── */
@@ -163,16 +146,7 @@
   .ti-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
   .ti-label { font-size: 13px; font-weight: 700; color: var(--dark); line-height: 1.2; }
 
-  /* ─────────────────────────────────────────────────
-     ROLE-BASED ACCESS: tab-admin-only
-     
-     ATURAN (urutan penting!):
-     1. tab-admin-only selalu hidden (specificity rendah, !important)
-     2. body.role-admin menampilkan kembali
-  ───────────────────────────────────────────────── */
-  .tab-admin-only { display: none !important; }
-  body.role-admin .tab-admin-only { display: flex !important; }
-  body.role-admin div.tab-admin-only { display: block !important; }
+
 
   /* ─────────────────────────────────────────────────
      MAIN CONTENT
@@ -338,6 +312,14 @@
   @media (max-width: 520px) {
     #tab-akun .form-row { grid-template-columns: 1fr !important; }
   }
+
+  /* ══════════════════════════════════════════════════
+     ROLE-BASED: ini HARUS di baris paling bawah CSS
+     agar menang dari semua rule di atas
+  ══════════════════════════════════════════════════ */
+  .tab-admin-only { display: none !important; }
+  body.role-admin .tab-admin-only { display: flex !important; }
+  body.role-admin div.tab-admin-only { display: block !important; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -2393,6 +2375,16 @@ function onLoginSuccess() {
 
   // Aktifkan tab yang sesuai
   if (_authUser.role === 'kasir') {
+    // PAKSA sembunyikan semua tab admin via JS (bukan hanya CSS)
+    document.querySelectorAll('.tab-admin-only').forEach(el => {
+      el.style.display = 'none';
+      el.setAttribute('hidden', '');
+    });
+    // Pastikan tabs-wrapper tidak terlihat di mobile
+    if (window.innerWidth <= 768) {
+      const tw = document.querySelector('.tabs-wrapper');
+      if (tw) tw.style.display = 'none';
+    }
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-icon').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-pos').classList.add('active');
